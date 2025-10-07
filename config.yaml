@@ -1,0 +1,8 @@
+# config.yaml
+# Lista de sites e APIs para monitorar.
+sites:
+  - url: https://www.google.com
+  - url: https://www.github.com
+  - url: https://www.twitter.com
+  - url: https://estenaoexiste.com.br # URL para testar um erro de DNS
+  - url: https://httpstat.us/503      # URL para testar um erro de servidor
