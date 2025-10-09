@@ -111,5 +111,5 @@ func RunChecks(sites []Site) {
 	}
 
 	fmt.Println("\n------------------------------------")
-	fmt.Printf("Relatório: %d serviços UP, %d serviços DOWN.\n", upCount, downCount)
+	fmt.Printf("Relatório Final: %d serviços online, %d serviços offline de um total de %d.\n", upCount, downCount, upCount+downCount)
 }
