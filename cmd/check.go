@@ -10,6 +10,7 @@ import (
 )
 
 var configFile string
+var timeout int
 
 // checkCmd representa o comando check
 var checkCmd = &cobra.Command{
@@ -23,6 +24,12 @@ var checkCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
+		// Valida o valor do timeout
+		if timeout <= 0 {
+			fmt.Println("Erro: O valor de --timeout deve ser um número inteiro positivo.")
+			os.Exit(1)
+		}
+
 		// Lê e interpreta o arquivo de configuração
 		sites, err := checker.ParseConfig(configFile)
 		if err != nil {
@@ -31,7 +38,7 @@ var checkCmd = &cobra.Command{
 		}
 
 		// Executa as verificações
-		checker.RunChecks(sites)
+		checker.RunChecks(sites, timeout)
 	},
 }
 
@@ -39,4 +46,6 @@ func init() {
 	rootCmd.AddCommand(checkCmd)
 	// Define a flag para o arquivo de configuração
 	checkCmd.Flags().StringVarP(&configFile, "file", "f", "config.yaml", "Caminho para o arquivo de configuração (ex: config.yaml)")
+	// Define a flag para o timeout
+	checkCmd.Flags().IntVar(&timeout, "timeout", 120, "Tempo máximo de execução em segundos (padrão: 120)")
 }
