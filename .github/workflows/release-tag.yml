@@ -1,0 +1,46 @@
+# Cria a tag de versão e a release no GitHub. Sem "release-as", a versão é
+# calculada pelos Conventional Commits (go-release-manager); com ela, vale a
+# versão do ROADMAP, criada no commit "ref" (ex.: o merge do fechamento da fase).
+# Dispare em Actions → Release tag → Run workflow (spec 010 do sdd-kit). Projetos Go
+# que publicam binários com GoReleaser usam o modelo do plugin sdd-release.
+name: Release tag
+
+on:
+  workflow_dispatch:
+    inputs:
+      release-as:
+        description: Versão vX.Y.Z do ROADMAP (vazio para calcular pelos commits)
+        required: false
+        default: ""
+      ref:
+        description: Commit onde criar a tag (vazio para a branch disparada)
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - id: version
+        uses: fabiodrneles/go-release-manager@v1.1.0
+        with:
+          create: true
+          release-as: ${{ inputs.release-as }}
+          ref: ${{ inputs.ref }}
+      - name: Release
+        if: steps.version.outputs.created == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.next }}
+        run: gh release create "$TAG" --verify-tag --generate-notes --title "$TAG"
+      - name: Resumo
+        env:
+          NEXT: ${{ steps.version.outputs.next }}
+          PREVIOUS: ${{ steps.version.outputs.previous }}
+        run: echo "### Tag ${NEXT:-nenhuma} (anterior ${PREVIOUS:-nenhuma})" >> "$GITHUB_STEP_SUMMARY"
