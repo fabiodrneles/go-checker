@@ -53,22 +53,22 @@ func ParseConfig(filePath string) ([]Site, error) {
 }
 
 // checkSite realiza a verificação de um único site e envia o resultado para um channel
-func checkSite(site Site, wg *sync.WaitGroup, resultsChan chan<- Result, timeout time.Duration) {
+func checkSite(site Site, wg *sync.WaitGroup, resultsChan chan<- Result) {
 	defer wg.Done()
 
 	client := http.Client{
-		Timeout: timeout,
+		Timeout: 10 * time.Second,
 	}
 
-	start := time.Now()
 	resp, err := client.Get(site.URL)
+	start := time.Time{}
 	latency := time.Since(start)
 
 	if err != nil {
 		resultsChan <- Result{URL: site.URL, Error: err, Latency: latency}
 		return
 	}
-	defer func() { _ = resp.Body.Close() }()
+	defer resp.Body.Close()
 
 	resultsChan <- Result{
 		URL:        site.URL,
@@ -79,7 +79,7 @@ func checkSite(site Site, wg *sync.WaitGroup, resultsChan chan<- Result, timeout
 }
 
 // RunChecks orquestra a verificação concorrente de todos os sites
-func RunChecks(sites []Site, timeout time.Duration) {
+func RunChecks(sites []Site) {
 	var wg sync.WaitGroup
 	resultsChan := make(chan Result, len(sites))
 
@@ -87,7 +87,7 @@ func RunChecks(sites []Site, timeout time.Duration) {
 
 	for _, site := range sites {
 		wg.Add(1)
-		go checkSite(site, &wg, resultsChan, timeout)
+		go checkSite(site, &wg, resultsChan)
 	}
 
 	// Espera todas as goroutines terminarem e fecha o channel
