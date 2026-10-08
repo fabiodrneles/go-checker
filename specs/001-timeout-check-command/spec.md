@@ -21,3 +21,7 @@ O valor do timeout deve ser um número inteiro positivo.
 
 ### AC-3: Valor inválido retorna erro
 `go-checker check --timeout -5` deve retornar erro de validação.
+
+## Decisões
+
+- **D-1** (decisão do usuário) como seguir no ticket «Testes para a cobertura chegar a 80%» → o valor do timeout não precisa ser um número inteiro
