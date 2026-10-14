@@ -19,10 +19,21 @@ const (
 	reset  = "\033[0m"
 )
 
-// Text writes a human-readable table. Color adds ANSI colors.
-func Text(w io.Writer, rs []runner.Result, elapsed time.Duration, color bool) error {
+// TextOptions tune the human-readable output.
+type TextOptions struct {
+	Color bool // ANSI colors
+	Trace bool // per-phase timings and certificate details (spec 003 FR-4)
+	// Now dates the certificate expiry; zero means time.Now().
+	Now time.Time
+}
+
+// Text writes a human-readable table.
+func Text(w io.Writer, rs []runner.Result, elapsed time.Duration, opts TextOptions) error {
+	if opts.Now.IsZero() {
+		opts.Now = time.Now()
+	}
 	paint := func(code, s string) string {
-		if !color {
+		if !opts.Color {
 			return s
 		}
 		return code + s + reset
@@ -51,6 +62,11 @@ func Text(w io.Writer, rs []runner.Result, elapsed time.Duration, color bool) er
 			fmt.Fprintf(&b, "  %s", paint(dim, fmt.Sprintf("(%d attempts)", r.Attempts)))
 		}
 		b.WriteByte('\n')
+		if opts.Trace && r.Response != nil {
+			for _, line := range traceLines(r, opts.Now) {
+				fmt.Fprintf(&b, "        %s\n", paint(dim, line))
+			}
+		}
 		if r.State != runner.Up {
 			for _, reason := range reasons(r) {
 				fmt.Fprintf(&b, "        %s %s\n", paint(code, "→"), reason)
@@ -65,6 +81,24 @@ func Text(w io.Writer, rs []runner.Result, elapsed time.Duration, color bool) er
 		FormatDuration(elapsed))
 	_, err := io.WriteString(w, b.String())
 	return err
+}
+
+func traceLines(r runner.Result, now time.Time) []string {
+	t := r.Response.Timings
+	lines := []string{fmt.Sprintf("dns %s · connect %s · tls %s · ttfb %s · total %s",
+		FormatDuration(t.DNS), FormatDuration(t.Connect), FormatDuration(t.TLS), FormatDuration(t.TTFB), FormatDuration(t.Total))}
+	if c := r.Response.TLS; c != nil {
+		lines = append(lines, fmt.Sprintf("cert %s · expires %s (%d days) · subject %s · issuer %s",
+			c.Version, c.NotAfter.Format(time.DateOnly), c.DaysLeft(now), orDash(c.Subject), orDash(c.Issuer)))
+	}
+	return lines
+}
+
+func orDash(s string) string {
+	if s == "" {
+		return "-"
+	}
+	return s
 }
 
 func detail(r runner.Result) string {
@@ -97,6 +131,8 @@ func truncate(s string, n int) string {
 // FormatDuration rounds for display: 87ms, 1.24s.
 func FormatDuration(d time.Duration) string {
 	switch {
+	case d == 0:
+		return "0"
 	case d < time.Millisecond:
 		return fmt.Sprintf("%dµs", d.Microseconds())
 	case d < time.Second:

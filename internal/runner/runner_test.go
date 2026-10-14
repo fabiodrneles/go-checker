@@ -11,6 +11,7 @@ import (
 
 	"github.com/fabiodrneles/go-checker/internal/config"
 	"github.com/fabiodrneles/go-checker/internal/probe"
+	"github.com/fabiodrneles/go-checker/internal/testcert"
 )
 
 func check(t *testing.T, url string, retries int) config.Check {
@@ -132,8 +133,62 @@ func TestSummarize(t *testing.T) {
 
 func TestEvaluateError(t *testing.T) {
 	r := Result{Err: errors.New("boom")}
-	Evaluate(&r)
+	Evaluate(&r, time.Now())
 	if r.State != Down || r.Reasons[0] != "boom" {
 		t.Fatalf("got %+v", r)
+	}
+}
+
+func tlsResult(minDays int, notAfter time.Time) Result {
+	return Result{
+		Check:    config.Check{TLSMinDays: &minDays},
+		Response: &probe.Response{StatusCode: 200, TLS: &probe.TLSInfo{NotAfter: notAfter}},
+	}
+}
+
+// 003 AC-2: a certificate close to expiry turns the check WARN.
+func TestEvaluateCertificateExpiringSoon(t *testing.T) {
+	now := time.Now()
+	r := tlsResult(14, now.Add(5*24*time.Hour+time.Hour))
+	Evaluate(&r, now)
+	if r.State != Warn || len(r.Reasons) != 1 || r.Reasons[0] != "certificate expires in 5 days (minimum 14)" {
+		t.Fatalf("got %s %v", r.State, r.Reasons)
+	}
+	r = tlsResult(14, now.Add(30*24*time.Hour))
+	Evaluate(&r, now)
+	if r.State != Up {
+		t.Fatalf("30 days left: got %s %v", r.State, r.Reasons)
+	}
+}
+
+// 003 AC-3: an expired certificate is DOWN, even when verification is skipped.
+func TestEvaluateCertificateExpired(t *testing.T) {
+	now := time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)
+	r := tlsResult(0, now.Add(-time.Minute))
+	Evaluate(&r, now)
+	if r.State != Down || r.Reasons[0] != "certificate expired on 2026-02-28" {
+		t.Fatalf("got %s %v", r.State, r.Reasons)
+	}
+}
+
+// The worst state wins when several problems add up.
+func TestEvaluateKeepsWorstState(t *testing.T) {
+	now := time.Now()
+	r := tlsResult(14, now.Add(2*24*time.Hour))
+	r.Response.StatusCode = 503
+	Evaluate(&r, now)
+	if r.State != Down || len(r.Reasons) != 2 {
+		t.Fatalf("got %s %v", r.State, r.Reasons)
+	}
+}
+
+func TestRunWarnOverRealTLS(t *testing.T) {
+	srv, _ := testcert.Server(t, time.Now().Add(3*24*time.Hour), http.NotFoundHandler())
+	c := check(t, srv.URL, 2)
+	c.Insecure = true
+	rs := Run(context.Background(), probe.New("t"), []config.Check{c}, Options{Sleep: noSleep})
+	// 404 is DOWN and not retried; the certificate warning is still reported.
+	if rs[0].State != Down || rs[0].Attempts != 1 || len(rs[0].Reasons) != 2 {
+		t.Fatalf("got %+v", rs[0])
 	}
 }

@@ -23,7 +23,7 @@ func sample() []runner.Result {
 
 func TestText(t *testing.T) {
 	var b bytes.Buffer
-	if err := Text(&b, sample(), 1500*time.Millisecond, false); err != nil {
+	if err := Text(&b, sample(), 1500*time.Millisecond, TextOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	out := b.String()
@@ -43,9 +43,33 @@ func TestText(t *testing.T) {
 	}
 }
 
+func TestTextTrace(t *testing.T) {
+	now := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	rs := []runner.Result{{Check: config.Check{Name: "api"}, State: runner.Up, Attempts: 1, Response: &probe.Response{
+		StatusCode: 200, Status: "200 OK", Latency: 90 * time.Millisecond,
+		Timings: probe.Timings{DNS: 3 * time.Millisecond, Connect: 10 * time.Millisecond, TLS: 25 * time.Millisecond, TTFB: 80 * time.Millisecond, Total: 90 * time.Millisecond},
+		TLS:     &probe.TLSInfo{NotAfter: now.Add(40 * 24 * time.Hour), Version: "TLS 1.3", Subject: "api.example.com"},
+	}}}
+	var b bytes.Buffer
+	if err := Text(&b, rs, time.Second, TextOptions{Trace: true, Now: now}); err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		"dns 3ms · connect 10ms · tls 25ms · ttfb 80ms · total 90ms",
+		"cert TLS 1.3 · expires 2026-02-10 (40 days) · subject api.example.com · issuer -",
+	} {
+		if !strings.Contains(b.String(), want) {
+			t.Errorf("output lacks %q:\n%s", want, b.String())
+		}
+	}
+	if FormatDuration(0) != "0" {
+		t.Error("zero duration")
+	}
+}
+
 func TestTextColor(t *testing.T) {
 	var b bytes.Buffer
-	if err := Text(&b, sample(), time.Second, true); err != nil {
+	if err := Text(&b, sample(), time.Second, TextOptions{Color: true}); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(b.String(), red+"✗"+reset) || !strings.Contains(b.String(), green+"✓"+reset) {
@@ -58,7 +82,7 @@ type failWriter struct{}
 func (failWriter) Write([]byte) (int, error) { return 0, errors.New("closed") }
 
 func TestTextWriteError(t *testing.T) {
-	if err := Text(failWriter{}, sample(), time.Second, false); err == nil {
+	if err := Text(failWriter{}, sample(), time.Second, TextOptions{}); err == nil {
 		t.Fatal("want write error")
 	}
 }

@@ -8,6 +8,9 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/fabiodrneles/go-checker/internal/testcert"
 )
 
 func run(t *testing.T, args ...string) (int, string, string) {
@@ -129,5 +132,31 @@ func TestHelpIsEnglish(t *testing.T) {
 	code, out, _ := run(t, "--help")
 	if code != ExitOK || !strings.Contains(out, "verifies that websites and APIs are up") || !strings.Contains(out, "check") {
 		t.Fatalf("code %d\n%s", code, out)
+	}
+}
+
+// 003 AC-4: --trace shows every phase and the certificate.
+func TestCheckTrace(t *testing.T) {
+	srv, _ := testcert.Server(t, time.Now().Add(90*24*time.Hour), http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
+	f := writeFile(t, t.TempDir(), "c.yaml", "checks:\n  - name: tls\n    url: "+srv.URL+"\n    insecure: true\n")
+	code, out, _ := run(t, "check", "-f", f, "--trace")
+	if code != ExitOK {
+		t.Fatalf("code %d\n%s", code, out)
+	}
+	for _, want := range []string{"dns ", "connect ", "tls ", "ttfb ", "total ", "cert TLS 1.3", "(89 days)", "issuer go-checker test CA"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("output lacks %q:\n%s", want, out)
+		}
+	}
+}
+
+func TestCheckCertificateWarn(t *testing.T) {
+	srv, _ := testcert.Server(t, time.Now().Add(3*24*time.Hour), http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
+	f := writeFile(t, t.TempDir(), "c.yaml", "defaults:\n  tls_min_days: 7\nchecks:\n  - url: "+srv.URL+"\n    insecure: true\n")
+	if code, out, _ := run(t, "check", "-f", f); code != ExitOK || !strings.Contains(out, "certificate expires in 2 days (minimum 7)") {
+		t.Fatalf("code %d\n%s", code, out)
+	}
+	if code, _, _ := run(t, "check", "-f", f, "--fail-on-warn"); code != ExitFail {
+		t.Fatalf("--fail-on-warn: code %d", code)
 	}
 }
