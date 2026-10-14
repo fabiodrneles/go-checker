@@ -1,7 +1,7 @@
 # 003 — Raio-x da requisição e validade do certificado
 
 - **Prioridade:** P1
-- **Status:** Approved
+- **Status:** In Progress
 - **Código afetado:** `internal/probe`, `internal/runner`, `internal/report`
 
 ## Contexto
@@ -14,6 +14,8 @@
 - **FR-2** Em HTTPS, o resultado MUST trazer os dias até o certificado do servidor expirar.
 - **FR-3** Abaixo de `tls_min_days` (padrão 14), o check MUST ficar WARN; com o certificado expirado, DOWN.
 - **FR-4** `check --trace` MUST imprimir o raio-x de cada check.
+- **FR-5** `insecure: true` MAY pular a verificação do certificado (serviços internos com certificado próprio); a validade MUST continuar sendo informada e avaliada.
+- **FR-6** Cada requisição MUST abrir uma conexão nova, para que DNS, TCP e TLS entrem na medição como para um visitante novo.
 
 ## Critérios de aceite
 

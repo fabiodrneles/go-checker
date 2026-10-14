@@ -2,12 +2,15 @@ package probe
 
 import (
 	"context"
+	"crypto/tls"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/fabiodrneles/go-checker/internal/testcert"
 )
 
 // 002 AC-1: latency is the real duration of the exchange.
@@ -89,5 +92,71 @@ func TestDoLimitsBody(t *testing.T) {
 func TestDoBadRequest(t *testing.T) {
 	if _, err := New("test").Do(context.Background(), Request{Method: "BAD METHOD", URL: "http://x"}); err == nil {
 		t.Fatal("want error for an invalid method")
+	}
+}
+
+// 003 AC-1: an HTTPS exchange reports every phase, and the total is the largest.
+func TestDoTraceAndCertificate(t *testing.T) {
+	notAfter := time.Now().Add(30 * 24 * time.Hour).Truncate(time.Second)
+	srv, pool := testcert.Server(t, notAfter, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		time.Sleep(20 * time.Millisecond)
+		_, _ = io.WriteString(w, "ok")
+	}))
+	p := NewWithTLS("test", &tls.Config{RootCAs: pool, MinVersion: tls.VersionTLS12})
+	resp, err := p.Do(context.Background(), Request{Method: "GET", URL: srv.URL})
+	if err != nil {
+		t.Fatal(err)
+	}
+	tm := resp.Timings
+	// A loopback connect can finish below the clock resolution (Windows):
+	// only the TLS handshake is long enough to be always measurable.
+	if tm.Connect < 0 || tm.TLS <= 0 || tm.TTFB < 20*time.Millisecond || tm.Total < tm.TTFB || tm.Total < tm.TLS || tm.Total != resp.Latency {
+		t.Fatalf("timings %+v", tm)
+	}
+	if resp.TLS == nil || !resp.TLS.NotAfter.Equal(notAfter) || resp.TLS.Subject != "localhost" || resp.TLS.Issuer != "go-checker test CA" || resp.TLS.Version == "" {
+		t.Fatalf("tls %+v", resp.TLS)
+	}
+	// A second request opens a new connection: TLS is measured again.
+	again, err := p.Do(context.Background(), Request{Method: "GET", URL: srv.URL})
+	if err != nil || again.Timings.TLS <= 0 {
+		t.Fatalf("second request: %v, %+v", err, again)
+	}
+}
+
+// 003 AC-3: an expired certificate fails verification...
+func TestDoExpiredCertificate(t *testing.T) {
+	srv, pool := testcert.Server(t, time.Now().Add(-time.Hour), http.NotFoundHandler())
+	p := NewWithTLS("test", &tls.Config{RootCAs: pool, MinVersion: tls.VersionTLS12})
+	if _, err := p.Do(context.Background(), Request{Method: "GET", URL: srv.URL}); err == nil || !strings.Contains(err.Error(), "expired") {
+		t.Fatalf("err = %v", err)
+	}
+	// ...and with insecure the request goes through, still reporting the date.
+	resp, err := New("test").Do(context.Background(), Request{Method: "GET", URL: srv.URL, Insecure: true})
+	if err != nil || resp.TLS == nil || resp.TLS.DaysLeft(time.Now()) >= 0 {
+		t.Fatalf("insecure: %v, %+v", err, resp)
+	}
+}
+
+func TestDaysLeft(t *testing.T) {
+	now := time.Date(2026, 1, 10, 12, 0, 0, 0, time.UTC)
+	for after, want := range map[time.Duration]int{
+		5*24*time.Hour + time.Hour: 5,
+		23 * time.Hour:             0,
+		0:                          0,
+		-time.Hour:                 -1,
+		-48 * time.Hour:            -2,
+	} {
+		if got := (TLSInfo{NotAfter: now.Add(after)}).DaysLeft(now); got != want {
+			t.Errorf("DaysLeft(%v) = %d, want %d", after, got, want)
+		}
+	}
+}
+
+func TestDoPlainHTTPHasNoTLS(t *testing.T) {
+	srv := httptest.NewServer(http.NotFoundHandler())
+	defer srv.Close()
+	resp, err := New("test").Do(context.Background(), Request{Method: "GET", URL: srv.URL})
+	if err != nil || resp.TLS != nil || resp.Timings.TLS != 0 || resp.Timings.DNS != 0 {
+		t.Fatalf("%v %+v", err, resp)
 	}
 }

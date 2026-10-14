@@ -105,30 +105,47 @@ func runOne(ctx context.Context, d Doer, c config.Check, opts Options) Result {
 
 func attempt(ctx context.Context, d Doer, c config.Check) Result {
 	resp, err := d.Do(ctx, probe.Request{
-		Method:  c.Method,
-		URL:     c.URL,
-		Headers: c.Headers,
-		Body:    c.Body,
-		Timeout: c.Timeout.Duration,
+		Method:   c.Method,
+		URL:      c.URL,
+		Headers:  c.Headers,
+		Body:     c.Body,
+		Timeout:  c.Timeout.Duration,
+		Insecure: c.Insecure,
 	})
 	r := Result{Check: c, Response: resp, Err: err}
-	Evaluate(&r)
+	Evaluate(&r, time.Now())
 	return r
 }
 
-// Evaluate sets State and Reasons from the response.
-func Evaluate(r *Result) {
+// Evaluate sets State and Reasons from the response, as of now.
+func Evaluate(r *Result, now time.Time) {
 	r.State, r.Reasons = Up, nil
 	if r.Err != nil {
-		r.State = Down
-		r.Reasons = []string{r.Err.Error()}
+		r.fail(Down, r.Err.Error())
 		return
 	}
 	if r.Response.StatusCode >= 400 {
-		r.State = Down
-		r.Reasons = []string{fmt.Sprintf("status %d", r.Response.StatusCode)}
+		r.fail(Down, fmt.Sprintf("status %d", r.Response.StatusCode))
+	}
+	if t := r.Response.TLS; t != nil {
+		switch days := t.DaysLeft(now); {
+		case days < 0 || !now.Before(t.NotAfter):
+			r.fail(Down, fmt.Sprintf("certificate expired on %s", t.NotAfter.Format(time.DateOnly)))
+		case r.Check.TLSMinDays != nil && days < *r.Check.TLSMinDays:
+			r.fail(Warn, fmt.Sprintf("certificate expires in %d days (minimum %d)", days, *r.Check.TLSMinDays))
+		}
 	}
 }
+
+// fail records a reason and keeps the worst state seen.
+func (r *Result) fail(s State, reason string) {
+	if rank[s] > rank[r.State] {
+		r.State = s
+	}
+	r.Reasons = append(r.Reasons, reason)
+}
+
+var rank = map[State]int{Up: 0, Warn: 1, Down: 2}
 
 // retryable reports whether another attempt could change the verdict: network
 // errors and 5xx answers are transient, a 4xx is not.

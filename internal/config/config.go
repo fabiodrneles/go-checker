@@ -19,6 +19,9 @@ const (
 	DefaultTimeout = 10 * time.Second
 	DefaultMethod  = "GET"
 	MaxRetries     = 10
+	// DefaultTLSMinDays is how close to expiry a certificate may get before
+	// the check turns WARN (spec 003 FR-3).
+	DefaultTLSMinDays = 14
 )
 
 // Duration is a time.Duration written in YAML as "500ms", "5s" or "1m".
@@ -43,9 +46,10 @@ func (d Duration) MarshalYAML() (any, error) { return d.String(), nil }
 
 // Defaults holds file-wide values that every check inherits.
 type Defaults struct {
-	Timeout Duration          `yaml:"timeout,omitempty"`
-	Retries *int              `yaml:"retries,omitempty"`
-	Headers map[string]string `yaml:"headers,omitempty"`
+	Timeout    Duration          `yaml:"timeout,omitempty"`
+	Retries    *int              `yaml:"retries,omitempty"`
+	Headers    map[string]string `yaml:"headers,omitempty"`
+	TLSMinDays *int              `yaml:"tls_min_days,omitempty"`
 }
 
 // Check is one endpoint to verify.
@@ -57,6 +61,10 @@ type Check struct {
 	Body    string            `yaml:"body,omitempty"`
 	Timeout Duration          `yaml:"timeout,omitempty"`
 	Retries *int              `yaml:"retries,omitempty"`
+	// TLSMinDays turns the check WARN when the certificate expires sooner.
+	TLSMinDays *int `yaml:"tls_min_days,omitempty"`
+	// Insecure skips certificate verification (self-signed services).
+	Insecure bool `yaml:"insecure,omitempty"`
 }
 
 // File is the on-disk format. "sites" is the v0 format, kept for compatibility.
@@ -152,6 +160,13 @@ func (d Defaults) apply(c *Check) {
 		zero := 0
 		c.Retries = &zero
 	}
+	if c.TLSMinDays == nil {
+		c.TLSMinDays = d.TLSMinDays
+	}
+	if c.TLSMinDays == nil {
+		v := DefaultTLSMinDays
+		c.TLSMinDays = &v
+	}
 	if len(d.Headers) > 0 {
 		h := make(map[string]string, len(d.Headers)+len(c.Headers))
 		for k, v := range d.Headers {
@@ -189,6 +204,9 @@ func (c Check) validate() error {
 	}
 	if r := *c.Retries; r < 0 || r > MaxRetries {
 		return fmt.Errorf("retries must be between 0 and %d, got %d", MaxRetries, r)
+	}
+	if *c.TLSMinDays < 0 {
+		return fmt.Errorf("tls_min_days must not be negative, got %d", *c.TLSMinDays)
 	}
 	return nil
 }

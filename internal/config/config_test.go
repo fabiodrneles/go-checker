@@ -30,6 +30,9 @@ checks:
 	if a.Method != "HEAD" || a.Timeout.Duration != 3*time.Second || *a.Retries != 2 {
 		t.Errorf("defaults not applied: %+v", a)
 	}
+	if *a.TLSMinDays != DefaultTLSMinDays {
+		t.Errorf("tls_min_days default = %d", *a.TLSMinDays)
+	}
 	if a.Headers["X-Team"] != "sre" || a.Headers["Accept"] != "application/json" {
 		t.Errorf("headers not merged: %v", a.Headers)
 	}
@@ -64,12 +67,13 @@ func TestParseErrors(t *testing.T) {
 		"checks:\n  - name: x\n":                "url is required",
 		"checks:\n  - url: example.com\n":       "absolute http(s) URL",
 		"checks:\n  - url: ftp://example.com\n": "absolute http(s) URL",
-		"checks:\n  - url: https://a\n    method: TRACE\n":  "unsupported method",
-		"checks:\n  - url: https://a\n    timeout: 5\n":     "invalid duration",
-		"checks:\n  - url: https://a\n    timeout: [1]\n":   "duration must be a string",
-		"checks:\n  - url: https://a\n    timeout: -1s\n":   "timeout must be positive",
-		"checks:\n  - url: https://a\n    retries: 11\n":    "retries must be between 0 and 10",
-		"checks:\n  - url: https://a\n  - url: https://a\n": "duplicate name",
+		"checks:\n  - url: https://a\n    method: TRACE\n":    "unsupported method",
+		"checks:\n  - url: https://a\n    timeout: 5\n":       "invalid duration",
+		"checks:\n  - url: https://a\n    timeout: [1]\n":     "duration must be a string",
+		"checks:\n  - url: https://a\n    timeout: -1s\n":     "timeout must be positive",
+		"checks:\n  - url: https://a\n    retries: 11\n":      "retries must be between 0 and 10",
+		"checks:\n  - url: https://a\n  - url: https://a\n":   "duplicate name",
+		"checks:\n  - url: https://a\n    tls_min_days: -1\n": "tls_min_days must not be negative",
 		"checks: {": "did not find",
 	}
 	for in, want := range cases {

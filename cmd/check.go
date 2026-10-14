@@ -24,6 +24,7 @@ type checkFlags struct {
 	concurrency int
 	failOnWarn  bool
 	noColor     bool
+	trace       bool
 }
 
 func newCheck(env Env) *cobra.Command {
@@ -50,7 +51,7 @@ current directory.`,
 			start := time.Now()
 			results := runner.Run(cmd.Context(), probe.New("go-checker/"+env.Version), cfg.Checks, runner.Options{Concurrency: f.concurrency})
 			color := !f.noColor && env.Getenv("NO_COLOR") == "" && env.IsTerminal != nil && env.IsTerminal()
-			if err := report.Text(env.Stdout, results, time.Since(start), color); err != nil {
+			if err := report.Text(env.Stdout, results, time.Since(start), report.TextOptions{Color: color, Trace: f.trace}); err != nil {
 				return err
 			}
 			return verdict(results, f.failOnWarn)
@@ -64,6 +65,7 @@ current directory.`,
 	fl.IntVarP(&f.concurrency, "concurrency", "c", 10, "checks running at the same time")
 	fl.BoolVar(&f.failOnWarn, "fail-on-warn", false, "exit 1 on warnings too")
 	fl.BoolVar(&f.noColor, "no-color", false, "disable colors (also NO_COLOR=1)")
+	fl.BoolVar(&f.trace, "trace", false, "show DNS, connect, TLS and first-byte timings and the certificate")
 	return c
 }
 
