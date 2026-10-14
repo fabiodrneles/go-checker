@@ -1,0 +1,4 @@
+# The v0 format is still accepted: one URL per entry.
+sites:
+  - url: https://github.com
+  - url: https://go.dev

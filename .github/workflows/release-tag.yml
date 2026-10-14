@@ -1,0 +1,51 @@
+# Cria a tag da próxima versão (go-release-manager, pelos Conventional Commits)
+# e publica os binários com o GoReleaser. Disparo: Actions → Release tag → Run
+# workflow, ou o motor do sdd-kit depois do merge do PR de release.
+# A tag criada com o GITHUB_TOKEN não dispara o evento push: por isso o job
+# release chama o release.yml com workflow_call.
+name: Release tag
+
+on:
+  workflow_dispatch:
+    inputs:
+      release-as:
+        description: Versão vX.Y.Z (vazio para calcular pelos commits)
+        required: false
+        default: ""
+      ref:
+        description: Commit onde criar a tag (vazio para a branch disparada)
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    outputs:
+      next: ${{ steps.version.outputs.next }}
+      created: ${{ steps.version.outputs.created }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - id: version
+        uses: fabiodrneles/go-release-manager@v1.2.0
+        with:
+          create: true
+          release-as: ${{ inputs.release-as }}
+          ref: ${{ inputs.ref }}
+      - name: Resumo
+        env:
+          NEXT: ${{ steps.version.outputs.next }}
+          PREVIOUS: ${{ steps.version.outputs.previous }}
+        run: echo "### Tag ${NEXT:-nenhuma} (anterior ${PREVIOUS:-nenhuma})" >> "$GITHUB_STEP_SUMMARY"
+
+  release:
+    needs: tag
+    if: needs.tag.outputs.created == 'true'
+    uses: ./.github/workflows/release.yml
+    with:
+      tag: ${{ needs.tag.outputs.next }}
+    secrets: inherit

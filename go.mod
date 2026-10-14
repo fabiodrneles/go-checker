@@ -1,4 +1,4 @@
-module go-checker
+module github.com/fabiodrneles/go-checker
 
 go 1.24.1
 

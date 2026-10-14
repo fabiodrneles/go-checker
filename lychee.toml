@@ -1,0 +1,12 @@
+# Verificação de links da documentação. Roda no CI (workflow "docs").
+exclude_path = ["node_modules", "dist"]
+
+exclude = [
+  '^mailto:',
+  # Links de versão do CHANGELOG e da release: só existem depois da tag do dono.
+  '^https://github\.com/fabiodrneles/go-checker/(compare|releases)',
+]
+
+max_retries = 3
+# 429, 502, 503 e 504 são falhas temporárias (limite de acesso, serviço fora); um 404 continua reprovando.
+accept = ["200..=299", "429", "502", "503", "504"]
