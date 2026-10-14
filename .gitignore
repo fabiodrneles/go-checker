@@ -1,0 +1,8 @@
+# Binaries and build output
+/go-checker
+*.exe
+*.dll
+*.so
+*.dylib
+/dist/
+/coverage.out

@@ -1,0 +1,45 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/session-start.sh"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" && sh scripts/sdd-checkpoint.sh auto >/dev/null 2>&1 || true"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" && sh scripts/sdd-session-guard.sh"
+          }
+        ]
+      }
+    ]
+  },
+  "extraKnownMarketplaces": {
+    "sdd-kit": {
+      "source": {
+        "source": "github",
+        "repo": "fabiodrneles/sdd-kit"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "sdd-delivery@sdd-kit": true
+  }
+}

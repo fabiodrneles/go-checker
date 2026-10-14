@@ -1,0 +1,52 @@
+# .github/workflows/release.yml
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  # Chamado pelo release-tag.yml: uma tag criada com o GITHUB_TOKEN não
+  # dispara o evento push.
+  workflow_call:
+    inputs:
+      tag:
+        description: Tag a publicar
+        type: string
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  goreleaser:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.tag || github.ref }}
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+
+      - name: Versão do golangci-lint (Makefile)
+        id: lint
+        run: echo "version=$(sed -n 's/^GOLANGCI_LINT_VERSION *:= *//p' Makefile)" >> "$GITHUB_OUTPUT"
+
+      - uses: golangci/golangci-lint-action@v9
+        with:
+          version: ${{ steps.lint.outputs.version }}
+          install-only: true
+
+      - name: make ci antes de publicar
+        run: make ci
+
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v7
+        with:
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

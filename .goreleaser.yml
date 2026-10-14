@@ -1,0 +1,83 @@
+# .goreleaser.yml
+version: 2
+
+project_name: go-checker
+
+# -------------------------------
+# Compilação
+# -------------------------------
+builds:
+  - env:
+      - CGO_ENABLED=0
+    main: ./main.go
+    binary: go-checker
+    goos:
+      - linux
+      - windows
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: windows
+        goarch: arm64
+    ldflags:
+      - -s -w
+      - -X main.version=v{{.Version}}
+      - -X main.commit={{.ShortCommit}}
+
+# -------------------------------
+# Arquivos
+# -------------------------------
+archives:
+  - id: release-archive
+    formats: [tar.gz]
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- .Version }}_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+      {{- if .Arm }}v{{ .Arm }}{{ end }}
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    files:
+      - LICENSE*
+      - README*
+      - examples/*
+
+# -------------------------------
+# Checksums
+# -------------------------------
+checksum:
+  name_template: checksums.txt
+  algorithm: sha256
+
+# -------------------------------
+# Snapshots
+# -------------------------------
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+
+# -------------------------------
+# Changelog
+# -------------------------------
+changelog:
+  sort: asc
+  use: git
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^chore:'
+      - '^ci:'
+      - 'Merge pull request'
+      - 'Merge branch'
+
+# -------------------------------
+# Release
+# -------------------------------
+release:
+  prerelease: auto
