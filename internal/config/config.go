@@ -65,6 +65,8 @@ type Check struct {
 	TLSMinDays *int `yaml:"tls_min_days,omitempty"`
 	// Insecure skips certificate verification (self-signed services).
 	Insecure bool `yaml:"insecure,omitempty"`
+	// Expect holds the assertions (spec 004).
+	Expect Expect `yaml:"expect,omitempty"`
 }
 
 // File is the on-disk format. "sites" is the v0 format, kept for compatibility.
@@ -188,7 +190,7 @@ func (c Check) label() string {
 
 var methods = map[string]bool{"GET": true, "HEAD": true, "POST": true, "PUT": true, "PATCH": true, "DELETE": true, "OPTIONS": true}
 
-func (c Check) validate() error {
+func (c *Check) validate() error {
 	if c.URL == "" {
 		return errors.New("url is required")
 	}
@@ -208,5 +210,5 @@ func (c Check) validate() error {
 	if *c.TLSMinDays < 0 {
 		return fmt.Errorf("tls_min_days must not be negative, got %d", *c.TLSMinDays)
 	}
-	return nil
+	return c.Expect.compile()
 }

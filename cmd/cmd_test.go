@@ -160,3 +160,25 @@ func TestCheckCertificateWarn(t *testing.T) {
 		t.Fatalf("--fail-on-warn: code %d", code)
 	}
 }
+
+func TestCheckAssertions(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"status":"degraded","db":{"ok":false}}`))
+	}))
+	t.Cleanup(srv.Close)
+	f := writeFile(t, t.TempDir(), "c.yaml", `checks:
+  - name: api
+    url: `+srv.URL+`
+    expect:
+      status: 200
+      headers: {Content-Type: json}
+      json:
+        - {path: $.status, equals: ok}
+        - {path: $.db.ok, equals: true}
+`)
+	code, out, _ := run(t, "check", "-f", f)
+	if code != ExitFail || !strings.Contains(out, `→ $.status is "degraded", want "ok"`) || !strings.Contains(out, "→ $.db.ok is false, want true") {
+		t.Fatalf("code %d\n%s", code, out)
+	}
+}
