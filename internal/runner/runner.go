@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/fabiodrneles/go-checker/internal/assert"
 	"github.com/fabiodrneles/go-checker/internal/config"
 	"github.com/fabiodrneles/go-checker/internal/probe"
 )
@@ -124,8 +125,12 @@ func Evaluate(r *Result, now time.Time) {
 		r.fail(Down, r.Err.Error())
 		return
 	}
-	if r.Response.StatusCode >= 400 {
-		r.fail(Down, fmt.Sprintf("status %d", r.Response.StatusCode))
+	for _, f := range assert.Evaluate(r.Check.Expect, r.Response) {
+		state := Down
+		if f.Severity == assert.Warn {
+			state = Warn
+		}
+		r.fail(state, f.Reason)
 	}
 	if t := r.Response.TLS; t != nil {
 		switch days := t.DaysLeft(now); {

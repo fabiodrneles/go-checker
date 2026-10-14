@@ -128,3 +128,24 @@ func TestDurationMarshal(t *testing.T) {
 		t.Fatalf("MarshalYAML = %v, %v", v, err)
 	}
 }
+
+// 004 AC-7: broken assertions are configuration errors.
+func TestExpectErrors(t *testing.T) {
+	base := "checks:\n  - url: https://a.example\n    expect:\n"
+	cases := map[string]string{
+		"      body_regex: \"(\"\n":                             "expect.body_regex",
+		"      json: [{path: status}]\n":                        "must start with $",
+		"      json: [{path: $.a, equals: 1, exists: false}]\n": "contradict",
+		"      status: 999\n":                                   "not an HTTP status",
+		"      status: ok\n":                                    "status must be a number",
+		"      status: [ok]\n":                                  "status must be a number",
+		"      max_latency: -1s\n":                              "max_latency must be positive",
+		"      json: [{path: $.a, equal: 1}]\n":                 "equal",
+	}
+	for in, want := range cases {
+		_, err := Parse([]byte(base + in))
+		if err == nil || !strings.Contains(err.Error(), want) {
+			t.Errorf("%q: err = %v, want %q", in, err, want)
+		}
+	}
+}

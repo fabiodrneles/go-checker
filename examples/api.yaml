@@ -1,0 +1,28 @@
+# Assertions: what a healthy answer looks like, not only "it answered".
+defaults:
+  timeout: 5s
+  retries: 2
+  tls_min_days: 21
+
+checks:
+  - name: GitHub API
+    url: https://api.github.com
+    headers:
+      Accept: application/vnd.github+json
+    expect:
+      status: 200
+      max_latency: 1500ms
+      headers:
+        Content-Type: application/json
+      json:
+        - path: $.current_user_url
+          equals: https://api.github.com/user
+        - path: $.message
+          exists: false
+
+  - name: Go homepage
+    url: https://go.dev
+    expect:
+      status: [200, 301, 302]
+      body_contains: Go
+      body_regex: "(?i)<title>.*go.*</title>"
