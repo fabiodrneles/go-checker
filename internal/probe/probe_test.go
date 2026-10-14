@@ -108,7 +108,9 @@ func TestDoTraceAndCertificate(t *testing.T) {
 		t.Fatal(err)
 	}
 	tm := resp.Timings
-	if tm.Connect <= 0 || tm.TLS <= 0 || tm.TTFB < 20*time.Millisecond || tm.Total < tm.TTFB || tm.Total < tm.TLS || tm.Total != resp.Latency {
+	// A loopback connect can finish below the clock resolution (Windows):
+	// only the TLS handshake is long enough to be always measurable.
+	if tm.Connect < 0 || tm.TLS <= 0 || tm.TTFB < 20*time.Millisecond || tm.Total < tm.TTFB || tm.Total < tm.TLS || tm.Total != resp.Latency {
 		t.Fatalf("timings %+v", tm)
 	}
 	if resp.TLS == nil || !resp.TLS.NotAfter.Equal(notAfter) || resp.TLS.Subject != "localhost" || resp.TLS.Issuer != "go-checker test CA" || resp.TLS.Version == "" {
