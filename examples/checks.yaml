@@ -1,0 +1,14 @@
+# go-checker example: copy to go-checker.yaml and adapt.
+# Reference: https://github.com/fabiodrneles/go-checker#configuration
+defaults:
+  timeout: 5s
+  retries: 1
+
+checks:
+  - name: GitHub
+    url: https://github.com
+
+  - name: GitHub API
+    url: https://api.github.com
+    headers:
+      Accept: application/vnd.github+json
