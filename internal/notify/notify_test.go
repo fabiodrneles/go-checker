@@ -79,3 +79,72 @@ func TestNotifyErrors(t *testing.T) {
 		t.Fatal("unmarshalable payload must fail")
 	}
 }
+
+func decode(t *testing.T, b []byte) map[string]any {
+	t.Helper()
+	var m map[string]any
+	if err := json.Unmarshal(b, &m); err != nil {
+		t.Fatal(err)
+	}
+	return m
+}
+
+// 010 AC-1
+func TestDiscord(t *testing.T) {
+	srv, got := capture(t, 204)
+	d := Discord{URL: srv.URL}
+	if err := d.Notify(context.Background(), ev); err != nil || d.Name() != "discord" {
+		t.Fatal(err)
+	}
+	if m := decode(t, <-got); m["content"] != "🔴 **api** is DOWN (was UP) · https://api.example.com\n→ status 503" {
+		t.Fatalf("%q", m["content"])
+	}
+}
+
+// 010 AC-2
+func TestTeams(t *testing.T) {
+	srv, got := capture(t, 200)
+	tm := Teams{URL: srv.URL}
+	if err := tm.Notify(context.Background(), ev); err != nil || tm.Name() != "teams" {
+		t.Fatal(err)
+	}
+	m := decode(t, <-got)
+	if m["@type"] != "MessageCard" || m["title"] != "api is DOWN (was UP)" || m["themeColor"] != "E01E5A" || m["text"] != "https://api.example.com<br>status 503" {
+		t.Fatalf("%v", m)
+	}
+}
+
+// 010 AC-3
+func TestTelegram(t *testing.T) {
+	var path string
+	got := make(chan []byte, 1)
+	srv := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+		path = r.URL.Path
+		b, _ := io.ReadAll(r.Body)
+		got <- b
+	}))
+	defer srv.Close()
+	old := TelegramAPI
+	TelegramAPI = srv.URL
+	t.Cleanup(func() { TelegramAPI = old })
+	tg, err := ParseTelegram("123456:ABC-def:-1001234")
+	if err != nil || tg.Token != "123456:ABC-def" || tg.ChatID != "-1001234" || tg.Name() != "telegram" {
+		t.Fatalf("%v %+v", err, tg)
+	}
+	if err := tg.Notify(context.Background(), ev); err != nil {
+		t.Fatal(err)
+	}
+	m := decode(t, <-got)
+	if path != "/bot123456:ABC-def/sendMessage" || m["chat_id"] != "-1001234" || !strings.HasPrefix(m["text"].(string), "🔴 api is DOWN") {
+		t.Fatalf("%s %v", path, m)
+	}
+}
+
+// 010 AC-4
+func TestParseTelegramErrors(t *testing.T) {
+	for _, s := range []string{"", "token", "123:abc", "123:abc:", ":x"} {
+		if _, err := ParseTelegram(s); err == nil {
+			t.Errorf("ParseTelegram(%q) = nil", s)
+		}
+	}
+}

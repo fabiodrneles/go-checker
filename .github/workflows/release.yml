@@ -16,6 +16,7 @@ on:
 
 permissions:
   contents: write
+  packages: write # imagem no ghcr.io (spec 010 FR-2)
 
 jobs:
   goreleaser:
@@ -43,6 +44,14 @@ jobs:
 
       - name: make ci antes de publicar
         run: make ci
+
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v7

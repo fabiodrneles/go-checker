@@ -1,0 +1,33 @@
+# Ensaia a release (binários e imagem Docker multi-arquitetura) sem publicar.
+name: Release dry run
+
+on:
+  pull_request:
+    paths:
+      - .goreleaser.yml
+      - Dockerfile
+      - .github/workflows/release*.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: goreleaser/goreleaser-action@v7
+        with:
+          args: release --snapshot --clean
+      - name: Imagem
+        run: |
+          docker images --format '{{.Repository}}:{{.Tag}}' | grep go-checker || true
+          ls dist/

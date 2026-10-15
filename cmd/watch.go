@@ -26,6 +26,9 @@ type watchFlags struct {
 	window      int
 	webhooks    []string
 	slack       []string
+	discord     []string
+	teams       []string
+	telegram    []string
 }
 
 func newWatch(env Env) *cobra.Command {
@@ -38,7 +41,7 @@ func newWatch(env Env) *cobra.Command {
 With --metrics-addr, /metrics serves Prometheus metrics (up, latency p50/p95/p99
 over the last --window responses, checks by state, certificate days left)
 and /healthz answers 200. A state change is reported, and sent to every
---webhook and --slack URL, only after it lasts --confirm rounds in a row,
+--webhook, --slack, --discord, --teams and --telegram target, only after it lasts --confirm rounds in a row,
 so that one lost packet does not page anyone.`,
 		Example: `  go-checker watch -f checks.yaml --interval 30s --metrics-addr :9090
   go-checker watch https://example.com --confirm 3 --slack https://hooks.slack.com/services/...`,
@@ -65,6 +68,19 @@ so that one lost packet does not page anyone.`,
 			}
 			for _, u := range f.slack {
 				ns = append(ns, notify.Slack{URL: u})
+			}
+			for _, u := range f.discord {
+				ns = append(ns, notify.Discord{URL: u})
+			}
+			for _, u := range f.teams {
+				ns = append(ns, notify.Teams{URL: u})
+			}
+			for _, v := range f.telegram {
+				tg, err := notify.ParseTelegram(v)
+				if err != nil {
+					return usageError("%v", err)
+				}
+				ns = append(ns, tg)
 			}
 			ctx, stop := signal.NotifyContext(cmd.Context(), syscall.SIGINT, syscall.SIGTERM)
 			defer stop()
@@ -113,6 +129,9 @@ so that one lost packet does not page anyone.`,
 	fl.IntVar(&f.window, "window", 100, "latest responses used for the latency quantiles")
 	fl.StringArrayVar(&f.webhooks, "webhook", nil, "POST each state change as JSON to this URL (repeatable)")
 	fl.StringArrayVar(&f.slack, "slack", nil, "send each state change to this Slack incoming webhook (repeatable)")
+	fl.StringArrayVar(&f.discord, "discord", nil, "send each state change to this Discord webhook (repeatable)")
+	fl.StringArrayVar(&f.teams, "teams", nil, "send each state change to this Microsoft Teams webhook (repeatable)")
+	fl.StringArrayVar(&f.telegram, "telegram", nil, "send each state change through a Telegram bot: BOT_TOKEN:CHAT_ID (repeatable)")
 	f.format = "text"
 	return c
 }
