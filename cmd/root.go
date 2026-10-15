@@ -2,6 +2,7 @@
 package cmd
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -26,6 +27,8 @@ type Env struct {
 	Getenv         func(string) string
 	// IsTerminal reports whether Stdout is a terminal (colors); nil means no.
 	IsTerminal func() bool
+	// Context bounds long-running commands (watch); nil means Background.
+	Context context.Context
 }
 
 // exitError carries an exit code up to Execute.
@@ -50,7 +53,11 @@ func Execute(args []string, env Env) int {
 	}
 	root := newRoot(env)
 	root.SetArgs(args)
-	err := root.Execute()
+	ctx := env.Context
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	err := root.ExecuteContext(ctx)
 	if err == nil {
 		return ExitOK
 	}
@@ -82,7 +89,7 @@ pipeline: 0 all up, 1 something is down, 2 usage or configuration error.`,
 	root.SetOut(env.Stdout)
 	root.SetErr(env.Stderr)
 	root.SetVersionTemplate("go-checker {{.Version}}\n")
-	root.AddCommand(newCheck(env), newInit(env), newVersion(env))
+	root.AddCommand(newCheck(env), newWatch(env), newInit(env), newVersion(env))
 	return root
 }
 

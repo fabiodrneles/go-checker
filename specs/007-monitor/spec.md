@@ -1,7 +1,7 @@
 # 007 — Modo monitor, métricas e alertas
 
 - **Prioridade:** P2
-- **Status:** Approved
+- **Status:** In Progress
 - **Código afetado:** `internal/watch`, `internal/metrics`, `internal/notify`, `cmd/`
 
 ## Requisitos funcionais
@@ -10,6 +10,7 @@
 - **FR-2** Com `--metrics-addr`, MUST servir `/metrics` no formato de exposição do Prometheus: `go_checker_up`, `go_checker_latency_seconds` (p50, p95 e p99 numa janela das últimas `--window` medições), `go_checker_checks_total` por estado e `go_checker_tls_days_left`; e `/healthz`.
 - **FR-3** Uma mudança de estado MUST ser confirmada por `--confirm N` rodadas seguidas antes de valer (proteção contra oscilação).
 - **FR-4** Cada mudança confirmada MUST ser enviada para `--webhook URL` (JSON) e `--slack URL` (mensagem do Slack).
+- **FR-6** A primeira rodada MUST definir o estado de partida de cada check, sem alerta; uma rodada interrompida pelo encerramento MUST NOT gerar alertas.
 - **FR-5** Falha ao enviar um alerta MUST ser registrada no stderr sem parar o monitor.
 
 ## Critérios de aceite
