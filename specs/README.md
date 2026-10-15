@@ -35,8 +35,8 @@ Convenções: `MUST`/`SHOULD`/`MAY` seguem a RFC 2119. Prioridades: **P0** (bloq
 | 005 | [Saídas para CI e GitHub Action](005-saidas-ci/spec.md) | P1 | In Progress |
 | 006 | [Gerar checks a partir de OpenAPI](006-openapi/spec.md) | P2 | In Progress |
 | 007 | [Modo monitor, métricas e alertas](007-monitor/spec.md) | P2 | In Progress |
-| 008 | [Documentação e v1.0.0](008-documentacao/spec.md) | P1 | Approved |
+| 008 | [Documentação e v1.0.0](008-documentacao/spec.md) | P1 | In Progress |
 | 009 | [Acima da média: segredos, autenticação, TCP e DNS](009-paridade/spec.md) | P1 | In Progress |
-| 010 | [Acima da média: mais canais de alerta e imagem Docker](010-alertas-docker/spec.md) | P1 | Approved |
+| 010 | [Acima da média: mais canais de alerta e imagem Docker](010-alertas-docker/spec.md) | P1 | In Progress |
 
 Status possíveis: `Draft` → `Approved` → `In Progress` → `Done`.

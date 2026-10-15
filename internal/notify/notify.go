@@ -82,3 +82,67 @@ func SlackText(e Event) string {
 	}
 	return text
 }
+
+// Discord posts to a Discord channel webhook.
+type Discord struct{ URL string }
+
+// Name identifies the notifier in logs.
+func (d Discord) Name() string { return "discord" }
+
+// Notify sends the event as a Discord message (Markdown).
+func (d Discord) Notify(ctx context.Context, e Event) error {
+	return post(ctx, d.URL, map[string]string{"content": PlainText(e, "**")})
+}
+
+// Teams posts a MessageCard to a Microsoft Teams incoming webhook.
+type Teams struct{ URL string }
+
+// Name identifies the notifier in logs.
+func (t Teams) Name() string { return "teams" }
+
+// Notify sends the event as a Teams card.
+func (t Teams) Notify(ctx context.Context, e Event) error {
+	color := map[string]string{"UP": "2EB67D", "WARN": "ECB22E", "DOWN": "E01E5A"}[e.To]
+	return post(ctx, t.URL, map[string]any{
+		"@type":      "MessageCard",
+		"@context":   "https://schema.org/extensions",
+		"summary":    fmt.Sprintf("%s is %s", e.Name, e.To),
+		"themeColor": color,
+		"title":      fmt.Sprintf("%s is %s (was %s)", e.Name, e.To, e.From),
+		"text":       strings.Join(append([]string{e.URL}, e.Reasons...), "<br>"),
+	})
+}
+
+// TelegramAPI is the Bot API base URL; tests replace it.
+var TelegramAPI = "https://api.telegram.org"
+
+// Telegram sends a message through a bot.
+type Telegram struct{ Token, ChatID string }
+
+// ParseTelegram reads "TOKEN:CHAT_ID". The bot token itself contains a colon,
+// so the chat id is what follows the last one.
+func ParseTelegram(s string) (Telegram, error) {
+	i := strings.LastIndex(s, ":")
+	if i <= 0 || i == len(s)-1 || !strings.Contains(s[:i], ":") {
+		return Telegram{}, fmt.Errorf("--telegram wants BOT_TOKEN:CHAT_ID (e.g. 123456:ABC-DEF:-1001234567890)")
+	}
+	return Telegram{Token: s[:i], ChatID: s[i+1:]}, nil
+}
+
+// Name identifies the notifier in logs.
+func (t Telegram) Name() string { return "telegram" }
+
+// Notify sends the event as a Telegram message.
+func (t Telegram) Notify(ctx context.Context, e Event) error {
+	return post(ctx, TelegramAPI+"/bot"+t.Token+"/sendMessage", map[string]string{"chat_id": t.ChatID, "text": PlainText(e, "")})
+}
+
+// PlainText formats an event with an emoji; bold wraps the check name.
+func PlainText(e Event, bold string) string {
+	icon := map[string]string{"UP": "🟢", "WARN": "🟡", "DOWN": "🔴"}[e.To]
+	text := fmt.Sprintf("%s %s%s%s is %s (was %s) · %s", icon, bold, e.Name, bold, e.To, e.From, e.URL)
+	for _, r := range e.Reasons {
+		text += "\n→ " + r
+	}
+	return text
+}

@@ -19,6 +19,7 @@ on:
 
 permissions:
   contents: write
+  packages: write # o release.yml publica a imagem no ghcr.io
 
 jobs:
   tag:
