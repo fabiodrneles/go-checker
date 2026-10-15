@@ -73,7 +73,7 @@ func TestFlapProtection(t *testing.T) {
 	if down.From != "UP" || down.To != "DOWN" || down.Reasons[0] != "status 503" || up.From != "DOWN" || up.To != "UP" || len(up.Reasons) != 0 {
 		t.Fatalf("events %+v", rec.events)
 	}
-	if !strings.Contains(out.String(), "api.example.com: UP → DOWN [status 503]") || !strings.Contains(out.String(), "0 up, 0 warn, 1 down") {
+	if !strings.Contains(out.String(), "api.example.com: DOWN → UP\n") || !strings.Contains(out.String(), "api.example.com: UP → DOWN · status 503") || !strings.Contains(out.String(), "0 up, 0 warn, 1 down") {
 		t.Fatalf("output\n%s", out)
 	}
 	if v, _ := w.Metrics.Quantile("https://api.example.com", 0.5); v != 0.001 {

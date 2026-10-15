@@ -128,7 +128,7 @@ func Parse(data []byte) (*Config, error) {
 	dec := yaml.NewDecoder(bytes.NewReader(data))
 	dec.KnownFields(true)
 	if err := dec.Decode(&f); err != nil && !errors.Is(err, io.EOF) {
-		return nil, err
+		return nil, friendly(err)
 	}
 	return f.Resolve()
 }

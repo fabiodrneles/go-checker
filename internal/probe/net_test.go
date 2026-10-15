@@ -50,10 +50,16 @@ func TestDNS(t *testing.T) {
 	Resolver = fakeResolver{"example.com": {"93.184.216.34", "2606:2800::1"}}
 	t.Cleanup(func() { Resolver = old })
 	resp, err := New("t").Do(context.Background(), Request{URL: "dns://example.com"})
-	if err != nil || resp.Status != "resolved 2 address(es)" || string(resp.Body) != "2606:2800::1\n93.184.216.34" || resp.Timings.DNS != resp.Latency {
+	if err != nil || resp.Status != "resolved 2606:2800::1, 93.184.216.34" || string(resp.Body) != "2606:2800::1\n93.184.216.34" || resp.Timings.DNS != resp.Latency {
 		t.Fatalf("%v %+v", err, resp)
 	}
 	if _, err := New("t").Do(context.Background(), Request{URL: "dns://nope.invalid"}); err == nil {
 		t.Fatal("unknown name must fail")
+	}
+}
+
+func TestResolvedSummary(t *testing.T) {
+	if got := resolved([]string{"a", "b", "c", "d", "e"}); got != "resolved a, b, c and 2 more" {
+		t.Fatal(got)
 	}
 }

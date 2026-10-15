@@ -39,9 +39,16 @@ func (p *Prober) dns(ctx context.Context, u *url.URL) (*Response, error) {
 	}
 	sort.Strings(addrs)
 	return &Response{
-		Status:  fmt.Sprintf("resolved %d address(es)", len(addrs)),
+		Status:  resolved(addrs),
 		Body:    []byte(strings.Join(addrs, "\n")),
 		Latency: took,
 		Timings: Timings{DNS: took, Total: took},
 	}, nil
+}
+
+func resolved(addrs []string) string {
+	if len(addrs) <= 3 {
+		return "resolved " + strings.Join(addrs, ", ")
+	}
+	return fmt.Sprintf("resolved %s and %d more", strings.Join(addrs[:3], ", "), len(addrs)-3)
 }

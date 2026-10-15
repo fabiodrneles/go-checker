@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -378,3 +379,20 @@ func TestWatchBadTelegram(t *testing.T) {
 		t.Fatalf("code %d %s", code, errOut)
 	}
 }
+
+func TestDisplayAddr(t *testing.T) {
+	for in, want := range map[string]string{"0.0.0.0:9090": "localhost:9090", "[::]:9090": "localhost:9090", "127.0.0.1:80": "127.0.0.1:80"} {
+		a, _ := net.ResolveTCPAddr("tcp", in)
+		if got := displayAddr(a); got != want {
+			t.Errorf("%s: %s", in, got)
+		}
+	}
+	if displayAddr(fakeAddr("nope")) != "nope" {
+		t.Error("unparsable address")
+	}
+}
+
+type fakeAddr string
+
+func (f fakeAddr) Network() string { return "tcp" }
+func (f fakeAddr) String() string  { return string(f) }
