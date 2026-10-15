@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptrace"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -107,6 +108,14 @@ func (p *Prober) Do(ctx context.Context, r Request) (*Response, error) {
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithTimeout(ctx, r.Timeout)
 		defer cancel()
+	}
+	if u, err := url.Parse(r.URL); err == nil {
+		switch u.Scheme {
+		case "tcp":
+			return p.tcp(ctx, u)
+		case "dns":
+			return p.dns(ctx, u)
+		}
 	}
 	var body io.Reader
 	if r.Body != "" {

@@ -3,6 +3,7 @@ package config
 
 import (
 	"bytes"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
@@ -67,6 +68,29 @@ type Check struct {
 	Insecure bool `yaml:"insecure,omitempty"`
 	// Expect holds the assertions (spec 004).
 	Expect Expect `yaml:"expect,omitempty"`
+	// Auth adds an Authorization header (spec 009).
+	Auth *Auth `yaml:"auth,omitempty"`
+}
+
+// Auth is HTTP basic or bearer authentication; values usually come from
+// ${ENV} references.
+type Auth struct {
+	Basic *struct {
+		Username string `yaml:"username"`
+		Password string `yaml:"password"`
+	} `yaml:"basic,omitempty"`
+	Bearer string `yaml:"bearer,omitempty"`
+}
+
+// Kind is the protocol of a check, from its URL scheme.
+func (c Check) Kind() string {
+	switch {
+	case strings.HasPrefix(c.URL, "tcp://"):
+		return "tcp"
+	case strings.HasPrefix(c.URL, "dns://"):
+		return "dns"
+	}
+	return "http"
 }
 
 // File is the on-disk format. "sites" is the v0 format, kept for compatibility.
@@ -96,6 +120,10 @@ func Load(path string) (*Config, error) {
 
 // Parse decodes YAML, rejecting unknown keys so that typos never pass silently.
 func Parse(data []byte) (*Config, error) {
+	data, err := ExpandEnv(data)
+	if err != nil {
+		return nil, err
+	}
 	var f File
 	dec := yaml.NewDecoder(bytes.NewReader(data))
 	dec.KnownFields(true)
@@ -188,6 +216,17 @@ func (c Check) label() string {
 	return "no name"
 }
 
+var schemes = map[string]bool{"http": true, "https": true, "tcp": true, "dns": true}
+
+func (c *Check) setHeader(k, v string) {
+	h := make(map[string]string, len(c.Headers)+1)
+	for name, val := range c.Headers {
+		h[name] = val
+	}
+	h[k] = v
+	c.Headers = h
+}
+
 var methods = map[string]bool{"GET": true, "HEAD": true, "POST": true, "PUT": true, "PATCH": true, "DELETE": true, "OPTIONS": true}
 
 func (c *Check) validate() error {
@@ -195,8 +234,32 @@ func (c *Check) validate() error {
 		return errors.New("url is required")
 	}
 	u, err := url.Parse(c.URL)
-	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
-		return fmt.Errorf("url %q must be an absolute http(s) URL", c.URL)
+	if err != nil || u.Host == "" || !schemes[u.Scheme] {
+		return fmt.Errorf("url %q must be an absolute http://, https://, tcp:// or dns:// URL", c.URL)
+	}
+	if u.Scheme == "tcp" && u.Port() == "" {
+		return fmt.Errorf("url %q needs a port (tcp://host:port)", c.URL)
+	}
+	if k := c.Kind(); k != "http" {
+		e := c.Expect
+		if len(e.Status) > 0 || len(e.JSON) > 0 || len(e.Headers) > 0 || c.Auth != nil || c.Body != "" {
+			return fmt.Errorf("%s checks support only expect.max_latency and, for dns, body_contains and body_regex (on the resolved addresses)", k)
+		}
+		if k == "tcp" && (e.BodyContains != "" || e.BodyRegex != "") {
+			return errors.New("tcp checks have no body: use expect.max_latency only")
+		}
+	}
+	if a := c.Auth; a != nil {
+		switch {
+		case a.Basic != nil && a.Bearer != "":
+			return errors.New("auth: use basic or bearer, not both")
+		case a.Basic != nil:
+			c.setHeader("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(a.Basic.Username+":"+a.Basic.Password)))
+		case a.Bearer != "":
+			c.setHeader("Authorization", "Bearer "+a.Bearer)
+		default:
+			return errors.New("auth: set basic or bearer")
+		}
 	}
 	if !methods[c.Method] {
 		return fmt.Errorf("unsupported method %q", c.Method)
