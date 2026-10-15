@@ -1,0 +1,56 @@
+# Runs the go-checker Action from this checkout against a local server.
+name: Action
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  action:
+    name: action (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - name: Local server
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/site" && echo '{"status":"ok"}' > "$RUNNER_TEMP/site/health.json"
+          (cd "$RUNNER_TEMP/site" && python -m http.server 8787 > /dev/null 2>&1 &)
+          for _ in $(seq 1 20); do curl -fsS http://127.0.0.1:8787/health.json > /dev/null && break; sleep 0.5; done
+          printf 'checks:\n  - name: health\n    url: http://127.0.0.1:8787/health.json\n    expect:\n      json: [{path: $.status, equals: ok}]\n' > "$RUNNER_TEMP/checks.yaml"
+      - id: up
+        uses: ./
+        with:
+          version: source
+          file: ${{ runner.temp }}/checks.yaml
+          junit: ${{ runner.temp }}/junit.xml
+      - id: down
+        uses: ./
+        with:
+          version: source
+          urls: http://127.0.0.1:8787/missing
+          fail: "false"
+      - name: Outputs
+        shell: bash
+        env:
+          UP: ${{ steps.up.outputs.up }}
+          UP_CODE: ${{ steps.up.outputs.exit-code }}
+          DOWN: ${{ steps.down.outputs.down }}
+          DOWN_CODE: ${{ steps.down.outputs.exit-code }}
+          JUNIT: ${{ runner.temp }}/junit.xml
+        run: |
+          echo "up=$UP ($UP_CODE) down=$DOWN ($DOWN_CODE)"
+          test "$UP" = 1 && test "$UP_CODE" = 0 && test "$DOWN" = 1 && test "$DOWN_CODE" = 1
+          grep -q 'failures="0"' "$JUNIT"

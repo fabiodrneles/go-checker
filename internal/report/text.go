@@ -74,7 +74,7 @@ func Text(w io.Writer, rs []runner.Result, elapsed time.Duration, opts TextOptio
 		}
 	}
 	s := runner.Summarize(rs)
-	fmt.Fprintf(&b, "\n%d checks: %s, %s, %s in %s\n", len(rs),
+	fmt.Fprintf(&b, "\n%s: %s, %s, %s in %s\n", Plural(len(rs), "check"),
 		paint(green, fmt.Sprintf("%d up", s.Up)),
 		paint(yellow, fmt.Sprintf("%d warn", s.Warn)),
 		paint(red, fmt.Sprintf("%d down", s.Down)),
@@ -126,6 +126,14 @@ func truncate(s string, n int) string {
 	}
 	rs := []rune(s)
 	return string(rs[:n-1]) + "…"
+}
+
+// Plural writes "1 check" or "3 checks".
+func Plural(n int, word string) string {
+	if n == 1 {
+		return "1 " + word
+	}
+	return fmt.Sprintf("%d %ss", n, word)
 }
 
 // FormatDuration rounds for display: 87ms, 1.24s.

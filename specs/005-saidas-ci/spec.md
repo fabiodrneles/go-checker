@@ -1,7 +1,7 @@
 # 005 — Saídas para CI e GitHub Action
 
 - **Prioridade:** P1
-- **Status:** Approved
+- **Status:** In Progress
 - **Código afetado:** `internal/report`, `cmd/`, `action.yml`
 
 ## Requisitos funcionais
@@ -10,6 +10,7 @@
 - **FR-2** O JSON MUST ter um esquema estável: `version`, `summary` e `checks[]` com `name`, `url`, `state`, `status`, `latency_ms`, `attempts`, `reasons`, `timings` e `tls_days_left`.
 - **FR-3** O JUnit MUST seguir o formato aceito por GitHub, GitLab e Jenkins (um `testcase` por check, `failure` para DOWN).
 - **FR-4** Com `GITHUB_STEP_SUMMARY` definido, o `check` MUST acrescentar a tabela Markdown ao resumo do job.
+- **FR-6** `--junit arquivo` MUST gravar também um JUnit, sem rodar os checks de novo.
 - **FR-5** `action.yml` MUST instalar o binário da release, rodar o `check` e expor `up`, `warn`, `down` e `report` como saídas.
 
 ## Critérios de aceite
