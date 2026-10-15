@@ -20,7 +20,8 @@ Sem CI, sem release e com o binário commitado, ninguém consegue instalar nem c
 ## Critérios de aceite
 
 - **AC-1** Dado um binário de release, quando `go-checker version` (ou `--version`) roda, então imprime `go-checker vX.Y.Z (commit)`.
+- **AC-2** Dado `go install github.com/fabiodrneles/go-checker@vX.Y.Z`, quando `go-checker version` roda, então imprime `vX.Y.Z`, não `dev`.
 
 ## Fora de escopo
 
-- Pacotes de sistema (Homebrew, apt) e imagem Docker.
+- Pacotes de sistema (Homebrew, apt).
