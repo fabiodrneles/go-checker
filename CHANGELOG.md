@@ -8,7 +8,7 @@ Todas as mudanças relevantes deste projeto. Formato [Keep a Changelog](https://
 
 ### Corrigido
 
-- report the module version when installed with go install (#26)
+- `go install github.com/fabiodrneles/go-checker@vX.Y.Z` mostra a versão instalada, e não `dev (none)` (#26)
 
 ## [1.0.0] - 2026-10-15
 
