@@ -363,3 +363,12 @@ func (s *safeBuffer) String() string {
 	defer s.mu.Unlock()
 	return s.b.String()
 }
+
+func TestCheckTCPFromCLI(t *testing.T) {
+	srv := server(t)
+	host := strings.TrimPrefix(srv.URL, "http://")
+	code, out, _ := run(t, "check", "tcp://"+host, srv.URL)
+	if code != ExitOK || !strings.Contains(out, "connected to 127.0.0.1") || !strings.Contains(out, "2 checks: 2 up") {
+		t.Fatalf("code %d\n%s", code, out)
+	}
+}

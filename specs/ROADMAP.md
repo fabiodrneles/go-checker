@@ -19,6 +19,9 @@ A versão de cada fase não é fixada aqui: o go-release-manager a calcula pelos
 - [ ] **T4** Asserções — 004 AC-1, AC-2, AC-3, AC-4, AC-5, AC-6, AC-7 (#7)
 - [ ] **T5** Saídas JSON, JUnit e Markdown, resumo do job e GitHub Action — 005 AC-1, AC-2, AC-3, AC-4, AC-5, AC-6 (#8)
 
+- [ ] **T9** Variáveis de ambiente, autenticação, checks TCP e DNS — 009 AC-1, AC-2, AC-3, AC-4, AC-5 (#18)
+- [ ] **T10** Discord, Teams e Telegram e imagem Docker — 010 AC-1, AC-2, AC-3, AC-4 (#19)
+
 ## Fase 3 — Profissional (P2)
 
 - [ ] **T6** `init --from-openapi` — 006 AC-1, AC-2, AC-3, AC-4, AC-5 (#9)

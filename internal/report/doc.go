@@ -172,6 +172,8 @@ func Markdown(w io.Writer, d Doc) error {
 		status, latency := "-", "-"
 		if c.Status != 0 {
 			status = fmt.Sprint(c.Status)
+		}
+		if c.Timings != nil {
 			latency = FormatDuration(time.Duration(c.LatencyMS * float64(time.Millisecond)))
 		}
 		notes := strings.Join(c.Reasons, "; ")
