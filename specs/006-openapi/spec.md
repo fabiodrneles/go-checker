@@ -1,7 +1,7 @@
 # 006 — Gerar checks a partir de OpenAPI
 
 - **Prioridade:** P2
-- **Status:** In Progress
+- **Status:** Done — entregue na `v1.0.0`
 - **Código afetado:** `internal/openapi`, `cmd/`
 
 ## Requisitos funcionais

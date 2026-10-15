@@ -28,15 +28,15 @@ Convenções: `MUST`/`SHOULD`/`MAY` seguem a RFC 2119. Prioridades: **P0** (bloq
 
 | ID | Spec | Prioridade | Status |
 |---|---|---|---|
-| 001 | [Projeto, CI e release](001-projeto/spec.md) | P0 | In Progress |
-| 002 | [Núcleo: medir, decidir e sair com o código certo](002-nucleo/spec.md) | P0 | In Progress |
-| 003 | [Raio-x da requisição e validade do certificado](003-raio-x-tls/spec.md) | P1 | In Progress |
-| 004 | [Asserções](004-assercoes/spec.md) | P1 | In Progress |
-| 005 | [Saídas para CI e GitHub Action](005-saidas-ci/spec.md) | P1 | In Progress |
-| 006 | [Gerar checks a partir de OpenAPI](006-openapi/spec.md) | P2 | In Progress |
-| 007 | [Modo monitor, métricas e alertas](007-monitor/spec.md) | P2 | In Progress |
-| 008 | [Documentação e v1.0.0](008-documentacao/spec.md) | P1 | In Progress |
-| 009 | [Acima da média: segredos, autenticação, TCP e DNS](009-paridade/spec.md) | P1 | In Progress |
-| 010 | [Acima da média: mais canais de alerta e imagem Docker](010-alertas-docker/spec.md) | P1 | In Progress |
+| 001 | [Projeto, CI e release](001-projeto/spec.md) | P0 | Done |
+| 002 | [Núcleo: medir, decidir e sair com o código certo](002-nucleo/spec.md) | P0 | Done |
+| 003 | [Raio-x da requisição e validade do certificado](003-raio-x-tls/spec.md) | P1 | Done |
+| 004 | [Asserções](004-assercoes/spec.md) | P1 | Done |
+| 005 | [Saídas para CI e GitHub Action](005-saidas-ci/spec.md) | P1 | Done |
+| 006 | [Gerar checks a partir de OpenAPI](006-openapi/spec.md) | P2 | Done |
+| 007 | [Modo monitor, métricas e alertas](007-monitor/spec.md) | P2 | Done |
+| 008 | [Documentação e v1.0.0](008-documentacao/spec.md) | P1 | Done |
+| 009 | [Acima da média: segredos, autenticação, TCP e DNS](009-paridade/spec.md) | P1 | Done |
+| 010 | [Acima da média: mais canais de alerta e imagem Docker](010-alertas-docker/spec.md) | P1 | Done |
 
 Status possíveis: `Draft` → `Approved` → `In Progress` → `Done`.

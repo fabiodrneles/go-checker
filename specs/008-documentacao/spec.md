@@ -1,7 +1,7 @@
 # 008 — Documentação e v1.0.0
 
 - **Prioridade:** P1
-- **Status:** In Progress
+- **Status:** Done — entregue na `v1.0.0`
 - **Código afetado:** `README.md`, `README.en.md`, `docs/`, `examples/`
 
 ## Requisitos funcionais

@@ -1,7 +1,7 @@
 # 007 — Modo monitor, métricas e alertas
 
 - **Prioridade:** P2
-- **Status:** In Progress
+- **Status:** Done — entregue na `v1.0.0`
 - **Código afetado:** `internal/watch`, `internal/metrics`, `internal/notify`, `cmd/`
 
 ## Requisitos funcionais
