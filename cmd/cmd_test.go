@@ -249,3 +249,42 @@ func TestCheckBadFormatAndPaths(t *testing.T) {
 		t.Fatalf("code %d, stderr %s", code, errb.String())
 	}
 }
+
+// 006 AC-4: init writes a file that check reads; 006 AC-5: it never overwrites without --force.
+func TestInit(t *testing.T) {
+	dir := t.TempDir()
+	t.Chdir(dir)
+	spec := writeFile(t, dir, "api.yaml", "openapi: 3.0.0\ninfo: {title: Demo}\npaths:\n  /health:\n    get:\n      responses: {'204': {description: ok}}\n  /items/{id}:\n    get: {}\n")
+	code, out, errOut := run(t, "init", "--from-openapi", spec, "--base-url", "http://127.0.0.1:9")
+	if code != ExitOK || !strings.Contains(out, "wrote go-checker.yaml with 1 check (1 operations skipped") {
+		t.Fatalf("code %d\n%s%s", code, out, errOut)
+	}
+	data, _ := os.ReadFile("go-checker.yaml")
+	if !strings.Contains(string(data), "url: http://127.0.0.1:9/health") || !strings.Contains(string(data), "status: 204") {
+		t.Fatalf("%s", data)
+	}
+	if code, _, errOut := run(t, "init"); code != ExitUsage || !strings.Contains(errOut, "already exists") {
+		t.Fatalf("overwrite: code %d %s", code, errOut)
+	}
+	after, _ := os.ReadFile("go-checker.yaml")
+	if string(after) != string(data) {
+		t.Fatal("file changed without --force")
+	}
+	if code, out, _ := run(t, "init", "--force"); code != ExitOK || !strings.Contains(out, "with 1 check") {
+		t.Fatalf("--force: %d %s", code, out)
+	}
+	if code, out, _ := run(t, "init", "-f", "-"); code != ExitOK || !strings.HasPrefix(out, "# go-checker checks.") {
+		t.Fatalf("stdout: %d %s", code, out)
+	}
+	for _, args := range [][]string{
+		{"init", "--from-openapi", "missing.yaml"},
+		{"init", "--from-openapi", writeFile(t, dir, "bad.yaml", "swagger: '2.0'\n")},
+		{"init", "--from-openapi", writeFile(t, dir, "none.yaml", "openapi: 3.0.0\npaths: {}\n"), "--base-url", "http://x.example"},
+		{"init", "--base-url", "http://x.example"},
+		{"init", "-f", filepath.Join(dir, "no", "dir", "x.yaml")},
+	} {
+		if code, _, errOut := run(t, args...); code != ExitUsage {
+			t.Errorf("%v: code %d %s", args, code, errOut)
+		}
+	}
+}

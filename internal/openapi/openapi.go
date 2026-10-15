@@ -1,0 +1,198 @@
+// Package openapi turns an OpenAPI 3 document into go-checker checks.
+package openapi
+
+import (
+	"bytes"
+	"errors"
+	"fmt"
+	"net/url"
+	"sort"
+	"strconv"
+	"strings"
+
+	"gopkg.in/yaml.v3"
+)
+
+// Document is the part of OpenAPI 3 the generator reads. YAML and JSON both
+// decode with yaml.v3, since JSON is valid YAML.
+type Document struct {
+	OpenAPI string                          `yaml:"openapi"`
+	Info    struct{ Title string }          `yaml:"info"`
+	Servers []Server                        `yaml:"servers"`
+	Paths   map[string]map[string]yaml.Node `yaml:"paths"`
+}
+
+// Server is one entry of "servers".
+type Server struct {
+	URL       string `yaml:"url"`
+	Variables map[string]struct {
+		Default string `yaml:"default"`
+	} `yaml:"variables"`
+}
+
+type operation struct {
+	OperationID string               `yaml:"operationId"`
+	Summary     string               `yaml:"summary"`
+	Parameters  []parameter          `yaml:"parameters"`
+	Responses   map[string]yaml.Node `yaml:"responses"`
+}
+
+type parameter struct {
+	Name     string `yaml:"name"`
+	In       string `yaml:"in"`
+	Required bool   `yaml:"required"`
+	Ref      string `yaml:"$ref"`
+}
+
+// Check is one generated check.
+type Check struct {
+	Name   string `yaml:"name"`
+	URL    string `yaml:"url"`
+	Expect struct {
+		Status int `yaml:"status,omitempty"`
+	} `yaml:"expect,omitempty"`
+}
+
+// Skipped explains why an operation did not become a check.
+type Skipped struct {
+	Operation string
+	Reason    string
+}
+
+// Result is the outcome of a generation.
+type Result struct {
+	Title   string
+	Base    string
+	Checks  []Check
+	Skipped []Skipped
+}
+
+// Parse decodes an OpenAPI 3 document.
+func Parse(data []byte) (*Document, error) {
+	var d Document
+	if err := yaml.Unmarshal(data, &d); err != nil {
+		return nil, fmt.Errorf("not a YAML or JSON document: %w", err)
+	}
+	if !strings.HasPrefix(d.OpenAPI, "3.") {
+		return nil, fmt.Errorf("only OpenAPI 3.x is supported (openapi: %q)", d.OpenAPI)
+	}
+	return &d, nil
+}
+
+// Generate makes one check per GET operation that can be called without
+// inventing values: no path parameter and no required query or header
+// parameter. The expected status is the lowest documented 2xx.
+func Generate(d *Document, baseURL string) (*Result, error) {
+	base, err := resolveBase(d, baseURL)
+	if err != nil {
+		return nil, err
+	}
+	res := &Result{Title: d.Info.Title, Base: base}
+	paths := make([]string, 0, len(d.Paths))
+	for p := range d.Paths {
+		paths = append(paths, p)
+	}
+	sort.Strings(paths)
+	for _, p := range paths {
+		item := d.Paths[p]
+		node, ok := item["get"]
+		if !ok {
+			continue
+		}
+		label := "GET " + p
+		var op operation
+		if err := node.Decode(&op); err != nil {
+			res.Skipped = append(res.Skipped, Skipped{label, "unreadable operation: " + err.Error()})
+			continue
+		}
+		var shared []parameter
+		if n, ok := item["parameters"]; ok {
+			_ = n.Decode(&shared)
+		}
+		if reason := needsInput(p, append(shared, op.Parameters...)); reason != "" {
+			res.Skipped = append(res.Skipped, Skipped{label, reason})
+			continue
+		}
+		c := Check{Name: op.OperationID, URL: base + p}
+		if c.Name == "" {
+			c.Name = label
+		}
+		c.Expect.Status = firstSuccess(op.Responses)
+		res.Checks = append(res.Checks, c)
+	}
+	if len(res.Checks) == 0 {
+		return res, errors.New("no GET operation can be checked without parameters")
+	}
+	return res, nil
+}
+
+func needsInput(path string, params []parameter) string {
+	if strings.Contains(path, "{") {
+		return "needs a path parameter"
+	}
+	for _, p := range params {
+		if p.Required && (p.In == "query" || p.In == "header" || p.In == "cookie") {
+			return fmt.Sprintf("needs the %s parameter %q", p.In, p.Name)
+		}
+	}
+	return ""
+}
+
+func firstSuccess(responses map[string]yaml.Node) int {
+	best := 0
+	for code := range responses {
+		n, err := strconv.Atoi(code)
+		if err == nil && n >= 200 && n < 300 && (best == 0 || n < best) {
+			best = n
+		}
+	}
+	return best
+}
+
+func resolveBase(d *Document, override string) (string, error) {
+	base := override
+	if base == "" {
+		if len(d.Servers) == 0 {
+			return "", errors.New("the document has no servers: pass --base-url")
+		}
+		s := d.Servers[0]
+		base = s.URL
+		for name, v := range s.Variables {
+			base = strings.ReplaceAll(base, "{"+name+"}", v.Default)
+		}
+	}
+	u, err := url.Parse(base)
+	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+		return "", fmt.Errorf("base URL %q is not an absolute http(s) URL: pass --base-url", base)
+	}
+	return strings.TrimSuffix(base, "/"), nil
+}
+
+// YAML renders the result as a go-checker file, with a header that says
+// where it came from and which operations were left out.
+func (r *Result) YAML() ([]byte, error) {
+	var body bytes.Buffer
+	enc := yaml.NewEncoder(&body)
+	enc.SetIndent(2)
+	if err := enc.Encode(struct {
+		Checks []Check `yaml:"checks"`
+	}{r.Checks}); err != nil {
+		return nil, err
+	}
+	var b strings.Builder
+	title := r.Title
+	if title == "" {
+		title = "the API"
+	}
+	fmt.Fprintf(&b, "# Generated by go-checker init --from-openapi for %s (%s).\n", title, r.Base)
+	b.WriteString("# Add expect blocks (body_contains, json, max_latency) to assert more than the status.\n")
+	if len(r.Skipped) > 0 {
+		b.WriteString("#\n# Left out (they need values go-checker cannot invent):\n")
+		for _, s := range r.Skipped {
+			fmt.Fprintf(&b, "#   %s: %s\n", s.Operation, s.Reason)
+		}
+	}
+	b.WriteString("\ndefaults:\n  timeout: 5s\n  retries: 1\n\n")
+	b.Write(body.Bytes())
+	return []byte(b.String()), nil
+}

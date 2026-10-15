@@ -1,0 +1,24 @@
+# Example OpenAPI spec: try it with
+#   go-checker init --from-openapi examples/openapi.yaml -f -
+openapi: 3.0.3
+info:
+  title: Example API
+  version: 1.0.0
+servers:
+  - url: https://api.example.com
+paths:
+  /health:
+    get:
+      operationId: health
+      responses:
+        "200": {description: ok}
+  /orders:
+    get:
+      operationId: listOrders
+      responses:
+        "200": {description: ok}
+  /orders/{id}:
+    get:
+      operationId: getOrder
+      responses:
+        "200": {description: ok}

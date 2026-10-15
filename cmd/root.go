@@ -82,7 +82,7 @@ pipeline: 0 all up, 1 something is down, 2 usage or configuration error.`,
 	root.SetOut(env.Stdout)
 	root.SetErr(env.Stderr)
 	root.SetVersionTemplate("go-checker {{.Version}}\n")
-	root.AddCommand(newCheck(env), newVersion(env))
+	root.AddCommand(newCheck(env), newInit(env), newVersion(env))
 	return root
 }
 

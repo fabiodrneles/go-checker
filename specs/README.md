@@ -33,7 +33,7 @@ Convenções: `MUST`/`SHOULD`/`MAY` seguem a RFC 2119. Prioridades: **P0** (bloq
 | 003 | [Raio-x da requisição e validade do certificado](003-raio-x-tls/spec.md) | P1 | In Progress |
 | 004 | [Asserções](004-assercoes/spec.md) | P1 | In Progress |
 | 005 | [Saídas para CI e GitHub Action](005-saidas-ci/spec.md) | P1 | In Progress |
-| 006 | [Gerar checks a partir de OpenAPI](006-openapi/spec.md) | P2 | Approved |
+| 006 | [Gerar checks a partir de OpenAPI](006-openapi/spec.md) | P2 | In Progress |
 | 007 | [Modo monitor, métricas e alertas](007-monitor/spec.md) | P2 | Approved |
 | 008 | [Documentação e v1.0.0](008-documentacao/spec.md) | P1 | Approved |
 
