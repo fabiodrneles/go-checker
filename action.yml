@@ -103,8 +103,9 @@ runs:
         if [ -n "$JUNIT" ]; then set -- "$@" --junit "$JUNIT"; fi
         # URLs and extra args are split on whitespace on purpose.
         # shellcheck disable=SC2086
-        go-checker check "$@" $URLS $ARGS --format json --output "$report"
-        code=$?
+        # Actions runs bash with -e: capture the exit code instead of dying on it.
+        code=0
+        go-checker check "$@" $URLS $ARGS --format json --output "$report" || code=$?
         {
           echo "exit-code=$code"
           echo "report=$report"
