@@ -4,7 +4,8 @@
 
 [![CI](https://github.com/fabiodrneles/go-checker/actions/workflows/ci.yml/badge.svg)](https://github.com/fabiodrneles/go-checker/actions/workflows/ci.yml)
 [![Cross-platform](https://github.com/fabiodrneles/go-checker/actions/workflows/cross-platform.yml/badge.svg)](https://github.com/fabiodrneles/go-checker/actions/workflows/cross-platform.yml)
-[![Go Reference](https://pkg.go.dev/badge/github.com/fabiodrneles/go-checker.svg)](https://pkg.go.dev/github.com/fabiodrneles/go-checker)
+[![Release](https://img.shields.io/github/v/release/fabiodrneles/go-checker)](https://github.com/fabiodrneles/go-checker/releases/latest)
+[![Go version](https://img.shields.io/github/go-mod/go-version/fabiodrneles/go-checker)](go.mod)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 [🇧🇷 Português](README.md) · 🇺🇸 English
