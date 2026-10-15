@@ -182,3 +182,70 @@ func TestCheckAssertions(t *testing.T) {
 		t.Fatalf("code %d\n%s", code, out)
 	}
 }
+
+// 005 AC-1, 005 AC-5, 005 AC-4: JSON to a file, text on the terminal, table in the job summary.
+func TestCheckOutputsAndSummary(t *testing.T) {
+	srv := server(t)
+	dir := t.TempDir()
+	report := filepath.Join(dir, "report.json")
+	junit := filepath.Join(dir, "junit.xml")
+	summary := writeFile(t, dir, "summary.md", "# earlier step\n")
+	var out, errb bytes.Buffer
+	code := Execute([]string{"check", srv.URL, srv.URL + "/down", "--format", "json", "--output", report, "--junit", junit},
+		Env{Stdout: &out, Stderr: &errb, Version: "v1", Getenv: func(k string) string {
+			if k == "GITHUB_STEP_SUMMARY" {
+				return summary
+			}
+			return ""
+		}})
+	if code != ExitFail || !strings.Contains(out.String(), "1 up, 0 warn, 1 down") {
+		t.Fatalf("code %d\n%s%s", code, out.String(), errb.String())
+	}
+	data, err := os.ReadFile(report)
+	if err != nil || !strings.Contains(string(data), `"down": 1`) {
+		t.Fatalf("report: %v\n%s", err, data)
+	}
+	if x, err := os.ReadFile(junit); err != nil || !strings.Contains(string(x), `failures="1"`) {
+		t.Fatalf("junit: %v\n%s", err, x)
+	}
+	s, _ := os.ReadFile(summary)
+	if !strings.HasPrefix(string(s), "# earlier step\n### go-checker: 1 up, 0 warn, 1 down") {
+		t.Fatalf("summary not appended:\n%s", s)
+	}
+}
+
+func TestCheckFormatsOnStdout(t *testing.T) {
+	srv := server(t)
+	for format, want := range map[string]string{"json": `"tool": "go-checker"`, "junit": "<testsuites", "markdown": "| 🟢 UP |", "text": "1 check: 1 up"} {
+		code, out, _ := run(t, "check", srv.URL, "--format", format)
+		if code != ExitOK || !strings.Contains(out, want) {
+			t.Errorf("%s: code %d\n%s", format, code, out)
+		}
+	}
+}
+
+// 005 AC-6
+func TestCheckBadFormatAndPaths(t *testing.T) {
+	srv := server(t)
+	missing := filepath.Join(t.TempDir(), "no", "such", "dir", "r.json")
+	for _, args := range [][]string{
+		{"check", srv.URL, "--format", "yaml"},
+		{"check", srv.URL, "--output", missing},
+		{"check", srv.URL, "--junit", missing},
+	} {
+		if code, _, errOut := run(t, args...); code != ExitUsage || !strings.HasPrefix(errOut, "error: ") {
+			t.Errorf("%v: code %d, %s", args, code, errOut)
+		}
+	}
+	// A summary that cannot be written is a warning, never a failure.
+	var out, errb bytes.Buffer
+	code := Execute([]string{"check", srv.URL}, Env{Stdout: &out, Stderr: &errb, Getenv: func(k string) string {
+		if k == "GITHUB_STEP_SUMMARY" {
+			return missing
+		}
+		return ""
+	}})
+	if code != ExitOK || !strings.Contains(errb.String(), "warning: job summary") {
+		t.Fatalf("code %d, stderr %s", code, errb.String())
+	}
+}
