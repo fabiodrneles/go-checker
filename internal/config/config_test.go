@@ -55,7 +55,7 @@ func TestParseLegacySites(t *testing.T) {
 // 002 AC-8: a typo is an error that names the line, never a silent default.
 func TestParseRejectsUnknownKeys(t *testing.T) {
 	_, err := Parse([]byte("checks:\n  - url: https://a.example\n    timout: 3s\n"))
-	if err == nil || !strings.Contains(err.Error(), "timout") || !strings.Contains(err.Error(), "line 3") {
+	if err == nil || err.Error() != `line 3: unknown key "timout" (did you mean "timeout"?)` {
 		t.Fatalf("err = %v", err)
 	}
 }
@@ -147,5 +147,24 @@ func TestExpectErrors(t *testing.T) {
 		if err == nil || !strings.Contains(err.Error(), want) {
 			t.Errorf("%q: err = %v, want %q", in, err, want)
 		}
+	}
+}
+
+func TestFriendlyErrors(t *testing.T) {
+	cases := map[string]string{
+		"checks:\n  - url: https://a\n    expect: {stauts: 200}\n": `line 3: unknown key "stauts" (did you mean "status"?)`,
+		"chekcs:\n  - url: https://a\n":                            `line 1: unknown key "chekcs" (did you mean "checks"?)`,
+		"defaults: {retry: 1}\nchecks:\n  - url: https://a\n":      `line 1: unknown key "retry" (did you mean "retries"?)`,
+		"checks:\n  - url: https://a\n    zzzzzzzz: 1\n":           `line 3: unknown key "zzzzzzzz"`,
+		"checks:\n  - url: https://a\n    retries: many\n":         "cannot unmarshal",
+	}
+	for in, want := range cases {
+		_, err := Parse([]byte(in))
+		if err == nil || !strings.Contains(err.Error(), want) {
+			t.Errorf("%q: %v, want %q", in, err, want)
+		}
+	}
+	if keysOf("Nope") != nil {
+		t.Error("unknown type has keys")
 	}
 }
