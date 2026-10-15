@@ -4,6 +4,12 @@ Todas as mudanças relevantes deste projeto. Formato [Keep a Changelog](https://
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-10-15
+
+### Corrigido
+
+- report the module version when installed with go install (#26)
+
 ## [1.0.0] - 2026-10-15
 
 Primeira versão estável: o protótipo virou uma ferramenta de verificação de saúde para o terminal, o CI e o monitoramento contínuo.
