@@ -1,15 +1,16 @@
 # 006 — Gerar checks a partir de OpenAPI
 
 - **Prioridade:** P2
-- **Status:** Approved
+- **Status:** In Progress
 - **Código afetado:** `internal/openapi`, `cmd/`
 
 ## Requisitos funcionais
 
 - **FR-1** `go-checker init --from-openapi ARQUIVO` MUST ler OpenAPI 3 em YAML ou JSON e gerar um arquivo de checks.
-- **FR-2** Cada operação GET sem parâmetro de caminho obrigatório MUST virar um check, com o nome do `operationId` (ou método e caminho) e `expect.status` do primeiro 2xx documentado.
+- **FR-2** Cada operação GET sem parâmetro de caminho nem parâmetro obrigatório de query, header ou cookie MUST virar um check, com o nome do `operationId` (ou método e caminho) e `expect.status` do primeiro 2xx documentado.
 - **FR-3** A URL base MUST vir de `--base-url` ou, sem ela, do primeiro `servers[].url`.
 - **FR-4** Sem `--from-openapi`, `init` MUST gerar um arquivo de exemplo comentado.
+- **FR-6** As operações deixadas de fora MUST aparecer no cabeçalho do arquivo gerado, com o motivo.
 - **FR-5** `init` MUST NOT sobrescrever um arquivo existente sem `--force`.
 
 ## Critérios de aceite

@@ -14,6 +14,9 @@ func TestExamplesAreValid(t *testing.T) {
 		t.Fatalf("no examples: %v", err)
 	}
 	for _, f := range files {
+		if filepath.Base(f) == "openapi.yaml" {
+			continue // an OpenAPI input for init, not a check file
+		}
 		if _, err := config.Load(f); err != nil {
 			t.Errorf("%s: %v", f, err)
 		}

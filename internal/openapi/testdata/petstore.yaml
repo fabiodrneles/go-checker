@@ -1,0 +1,49 @@
+openapi: 3.0.3
+info:
+  title: Petstore
+  version: 1.0.0
+servers:
+  - url: https://{env}.petstore.example/v1
+    variables:
+      env:
+        default: api
+paths:
+  /health:
+    get:
+      operationId: health
+      responses:
+        "200": {description: ok}
+  /pets:
+    parameters:
+      - {name: X-Tenant, in: header, required: false}
+    get:
+      operationId: listPets
+      parameters:
+        - {name: limit, in: query, required: false}
+      responses:
+        "206": {description: partial}
+        "200": {description: ok}
+        default: {description: error}
+    post:
+      operationId: createPet
+      responses:
+        "201": {description: created}
+  /pets/{id}:
+    get:
+      operationId: getPet
+      responses:
+        "200": {description: ok}
+  /search:
+    get:
+      parameters:
+        - {name: q, in: query, required: true}
+      responses:
+        "200": {description: ok}
+  /ping:
+    get:
+      responses:
+        "204": {description: no content}
+  /status:
+    get:
+      responses:
+        2XX: {description: ok}
