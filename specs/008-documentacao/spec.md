@@ -1,7 +1,7 @@
 # 008 — Documentação e v1.0.0
 
 - **Prioridade:** P1
-- **Status:** Approved
+- **Status:** In Progress
 - **Código afetado:** `README.md`, `README.en.md`, `docs/`, `examples/`
 
 ## Requisitos funcionais

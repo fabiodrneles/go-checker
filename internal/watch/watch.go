@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strings"
 	"time"
 
 	"github.com/fabiodrneles/go-checker/internal/config"
@@ -85,7 +86,11 @@ func (w *Watcher) Round(ctx context.Context) []notify.Event {
 	s := runner.Summarize(rs)
 	w.printf(w.Out, "%s  %d up, %d warn, %d down\n", now.Format("15:04:05"), s.Up, s.Warn, s.Down)
 	for _, e := range events {
-		w.printf(w.Out, "          %s: %s → %s %v\n", e.Name, e.From, e.To, e.Reasons)
+		line := fmt.Sprintf("          %s: %s → %s", e.Name, e.From, e.To)
+		if len(e.Reasons) > 0 {
+			line += " · " + strings.Join(e.Reasons, "; ")
+		}
+		w.printf(w.Out, "%s\n", line)
 		for _, n := range w.Notifiers {
 			if err := n.Notify(ctx, e); err != nil {
 				w.printf(w.Errs, "warning: %s alert for %s failed: %v\n", n.Name(), e.Name, err)

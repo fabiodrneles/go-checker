@@ -5,6 +5,9 @@ exclude = [
   '^mailto:',
   # Links de versão do CHANGELOG e da release: só existem depois da tag do dono.
   '^https://github\.com/fabiodrneles/go-checker/(compare|releases)',
+  # Endereços de exemplo da documentação.
+  '^https?://(localhost|127\.0\.0\.1|[a-z.]*example\.com|[a-z.]*acme\.test)',
+  '^https://ghcr\.io/',
 ]
 
 max_retries = 3
