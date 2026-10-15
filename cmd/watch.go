@@ -97,7 +97,7 @@ so that one lost packet does not page anyone.`,
 					defer cancel()
 					_ = srv.Shutdown(sctx)
 				}()
-				_, _ = fmt.Fprintf(env.Stdout, "metrics on http://%s/metrics\n", ln.Addr())
+				_, _ = fmt.Fprintf(env.Stdout, "metrics on http://%s/metrics\n", displayAddr(ln.Addr()))
 			}
 			_, _ = fmt.Fprintf(env.Stdout, "watching %s every %s (alerts after %d rounds)\n", plural(len(cfg.Checks), "check"), f.interval, f.confirm)
 			w := &watch.Watcher{
@@ -145,4 +145,16 @@ func MetricsHandler(reg *metrics.Registry) http.Handler {
 	})
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte("ok\n")) })
 	return mux
+}
+
+// displayAddr turns a wildcard listen address into one a browser can open.
+func displayAddr(a net.Addr) string {
+	host, port, err := net.SplitHostPort(a.String())
+	if err != nil {
+		return a.String()
+	}
+	if ip := net.ParseIP(host); host == "" || (ip != nil && ip.IsUnspecified()) {
+		host = "localhost"
+	}
+	return net.JoinHostPort(host, port)
 }
