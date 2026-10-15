@@ -2,11 +2,15 @@ package cmd
 
 import (
 	"bytes"
+	"context"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -287,4 +291,75 @@ func TestInit(t *testing.T) {
 			t.Errorf("%v: code %d %s", args, code, errOut)
 		}
 	}
+}
+
+func TestWatchServesMetricsAndStops(t *testing.T) {
+	srv := server(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	var out, errb safeBuffer
+	done := make(chan int)
+	go func() {
+		done <- Execute([]string{"watch", srv.URL, "--interval", "1s", "--metrics-addr", "127.0.0.1:0"},
+			Env{Stdout: &out, Stderr: &errb, Version: "v1", Getenv: func(string) string { return "" }, Context: ctx})
+	}()
+	var addr string
+	deadline := time.Now().Add(5 * time.Second)
+	for addr == "" && time.Now().Before(deadline) {
+		if m := regexp.MustCompile(`metrics on (http://\S+)/metrics`).FindStringSubmatch(out.String()); m != nil && strings.Contains(out.String(), "1 up") {
+			addr = m[1]
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if addr == "" {
+		cancel()
+		t.Fatalf("no metrics address:\n%s", out.String())
+	}
+	resp, err := http.Get(addr + "/metrics")
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	_ = resp.Body.Close()
+	if !strings.Contains(string(body), "go_checker_up{check=\""+srv.URL+"\"} 1") || resp.Header.Get("Content-Type") != "text/plain; version=0.0.4; charset=utf-8" {
+		t.Fatalf("metrics:\n%s", body)
+	}
+	if r, err := http.Get(addr + "/healthz"); err != nil || r.StatusCode != 200 {
+		t.Fatalf("healthz: %v", err)
+	}
+	cancel()
+	if code := <-done; code != ExitOK || !strings.Contains(out.String(), "stopped") {
+		t.Fatalf("code %d\n%s", code, out.String())
+	}
+}
+
+func TestWatchUsageErrors(t *testing.T) {
+	for _, args := range [][]string{
+		{"watch", "https://example.com", "--interval", "10ms"},
+		{"watch", "https://example.com", "--confirm", "0"},
+		{"watch", "https://example.com", "--window", "0"},
+		{"watch", "https://example.com", "--metrics-addr", "256.0.0.1:99999"},
+		{"watch", "https://example.com", "--concurrency", "0"},
+		{"watch", "-f", "missing.yaml"},
+	} {
+		if code, _, errOut := run(t, args...); code != ExitUsage {
+			t.Errorf("%v: code %d %s", args, code, errOut)
+		}
+	}
+}
+
+type safeBuffer struct {
+	mu sync.Mutex
+	b  bytes.Buffer
+}
+
+func (s *safeBuffer) Write(p []byte) (int, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.b.Write(p)
+}
+
+func (s *safeBuffer) String() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.b.String()
 }
