@@ -3,6 +3,8 @@ package cmd
 import (
 	"context"
 	"errors"
+	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"time"
@@ -25,6 +27,9 @@ type checkFlags struct {
 	failOnWarn  bool
 	noColor     bool
 	trace       bool
+	format      string
+	output      string
+	junit       string
 }
 
 func newCheck(env Env) *cobra.Command {
@@ -50,8 +55,7 @@ current directory.`,
 			override(cfg, cmd, f)
 			start := time.Now()
 			results := runner.Run(cmd.Context(), probe.New("go-checker/"+env.Version), cfg.Checks, runner.Options{Concurrency: f.concurrency})
-			color := !f.noColor && env.Getenv("NO_COLOR") == "" && env.IsTerminal != nil && env.IsTerminal()
-			if err := report.Text(env.Stdout, results, time.Since(start), report.TextOptions{Color: color, Trace: f.trace}); err != nil {
+			if err := writeReports(env, f, results, time.Since(start)); err != nil {
 				return err
 			}
 			return verdict(results, f.failOnWarn)
@@ -66,6 +70,9 @@ current directory.`,
 	fl.BoolVar(&f.failOnWarn, "fail-on-warn", false, "exit 1 on warnings too")
 	fl.BoolVar(&f.noColor, "no-color", false, "disable colors (also NO_COLOR=1)")
 	fl.BoolVar(&f.trace, "trace", false, "show DNS, connect, TLS and first-byte timings and the certificate")
+	fl.StringVarP(&f.format, "format", "o", "text", "report format: text, json, junit or markdown")
+	fl.StringVar(&f.output, "output", "", "write the report to this file (the terminal still shows text)")
+	fl.StringVar(&f.junit, "junit", "", "also write a JUnit XML report to this file")
 	return c
 }
 
@@ -103,6 +110,8 @@ func loadChecks(file string, urls []string) (*config.Config, error) {
 
 func validateFlags(f checkFlags) error {
 	switch {
+	case !formats[f.format]:
+		return usageError("unknown --format %q (use text, json, junit or markdown)", f.format)
 	case f.concurrency < 1:
 		return usageError("--concurrency must be at least 1")
 	case f.timeout <= 0:
@@ -131,4 +140,70 @@ func verdict(rs []runner.Result, failOnWarn bool) error {
 		return errFailed
 	}
 	return nil
+}
+
+var formats = map[string]bool{"text": true, "json": true, "junit": true, "markdown": true}
+
+// writeReports prints the report in the chosen format, to the terminal or to
+// --output (then the terminal gets the text report), and appends the Markdown
+// table to the GitHub Actions job summary when running there.
+func writeReports(env Env, f checkFlags, rs []runner.Result, elapsed time.Duration) error {
+	now := time.Now()
+	doc := report.Build(rs, elapsed, "go-checker "+env.Version, now)
+	color := !f.noColor && env.Getenv("NO_COLOR") == "" && env.IsTerminal != nil && env.IsTerminal()
+	render := func(w io.Writer, format string) error {
+		switch format {
+		case "json":
+			return report.JSON(w, doc)
+		case "junit":
+			return report.JUnit(w, doc, f.failOnWarn)
+		case "markdown":
+			return report.Markdown(w, doc)
+		}
+		return report.Text(w, rs, elapsed, report.TextOptions{Color: color && w == env.Stdout, Trace: f.trace, Now: now})
+	}
+	if f.output == "" {
+		if err := render(env.Stdout, f.format); err != nil {
+			return err
+		}
+	} else {
+		if err := createFile(f.output, func(w io.Writer) error { return render(w, f.format) }); err != nil {
+			return usageError("--output: %v", err)
+		}
+		if err := render(env.Stdout, "text"); err != nil {
+			return err
+		}
+	}
+	if f.junit != "" {
+		if err := createFile(f.junit, func(w io.Writer) error { return report.JUnit(w, doc, f.failOnWarn) }); err != nil {
+			return usageError("--junit: %v", err)
+		}
+	}
+	if path := env.Getenv("GITHUB_STEP_SUMMARY"); path != "" {
+		if err := appendFile(path, func(w io.Writer) error { return report.Markdown(w, doc) }); err != nil {
+			_, _ = fmt.Fprintf(env.Stderr, "warning: job summary: %v\n", err)
+		}
+	}
+	return nil
+}
+
+func createFile(path string, fn func(io.Writer) error) error {
+	return withFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, fn)
+}
+
+func appendFile(path string, fn func(io.Writer) error) error {
+	return withFile(path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, fn)
+}
+
+func withFile(path string, flag int, fn func(io.Writer) error) (err error) {
+	fh, err := os.OpenFile(path, flag, 0o644) //nolint:gosec // the user picks the report path
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if cerr := fh.Close(); err == nil {
+			err = cerr
+		}
+	}()
+	return fn(fh)
 }

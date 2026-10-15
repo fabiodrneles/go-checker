@@ -1,0 +1,117 @@
+name: go-checker
+description: Health checks for websites and APIs; fails the job when a check is down
+author: fabiodrneles
+branding:
+  icon: activity
+  color: green
+
+inputs:
+  version:
+    description: Release to install (e.g. v1.0.0), "latest", or "source" to build this checkout with Go
+    required: false
+    default: latest
+  file:
+    description: Check file (default go-checker.yaml, checks.yaml or config.yaml)
+    required: false
+    default: ""
+  urls:
+    description: URLs to check instead of a file, separated by spaces or new lines
+    required: false
+    default: ""
+  args:
+    description: Extra arguments for "go-checker check" (e.g. --retries 2 --fail-on-warn)
+    required: false
+    default: ""
+  junit:
+    description: Also write a JUnit report to this path
+    required: false
+    default: ""
+  fail:
+    description: Fail the step when a check fails ("false" only reports)
+    required: false
+    default: "true"
+
+outputs:
+  up:
+    description: Checks up
+    value: ${{ steps.run.outputs.up }}
+  warn:
+    description: Checks with warnings
+    value: ${{ steps.run.outputs.warn }}
+  down:
+    description: Checks down
+    value: ${{ steps.run.outputs.down }}
+  report:
+    description: Path of the JSON report
+    value: ${{ steps.run.outputs.report }}
+  exit-code:
+    description: Exit code of go-checker (0 up, 1 failed, 2 usage error)
+    value: ${{ steps.run.outputs.exit-code }}
+
+runs:
+  using: composite
+  steps:
+    - name: Install go-checker
+      shell: bash
+      env:
+        VERSION: ${{ inputs.version }}
+        GH_TOKEN: ${{ github.token }}
+        ACTION_PATH: ${{ github.action_path }}
+      run: |
+        set -euo pipefail
+        bin="$RUNNER_TEMP/go-checker-bin"
+        mkdir -p "$bin"
+        if [ "$VERSION" = "source" ]; then
+          (cd "$ACTION_PATH" && go build -o "$bin/" .)
+        else
+          case "$RUNNER_OS" in
+            Linux) os=Linux ext=tar.gz ;;
+            macOS) os=Darwin ext=tar.gz ;;
+            Windows) os=Windows ext=zip ;;
+            *) echo "unsupported runner OS $RUNNER_OS" >&2; exit 1 ;;
+          esac
+          case "$RUNNER_ARCH" in
+            X64) arch=x86_64 ;;
+            ARM64) arch=arm64 ;;
+            *) echo "unsupported runner architecture $RUNNER_ARCH" >&2; exit 1 ;;
+          esac
+          tag="$VERSION"
+          if [ "$tag" = "latest" ]; then
+            tag="$(gh release view --repo fabiodrneles/go-checker --json tagName --jq .tagName)"
+          fi
+          cd "$RUNNER_TEMP"
+          gh release download "$tag" --repo fabiodrneles/go-checker --clobber \
+            --pattern "go-checker_${tag#v}_${os}_${arch}.${ext}" --pattern checksums.txt
+          grep " go-checker_${tag#v}_${os}_${arch}.${ext}\$" checksums.txt | sha256sum -c -
+          if [ "$ext" = zip ]; then unzip -o -q "go-checker_${tag#v}_${os}_${arch}.zip" -d "$bin"; else tar -xzf "go-checker_${tag#v}_${os}_${arch}.tar.gz" -C "$bin"; fi
+        fi
+        echo "$bin" >> "$GITHUB_PATH"
+    - name: Run checks
+      id: run
+      shell: bash
+      env:
+        FILE: ${{ inputs.file }}
+        URLS: ${{ inputs.urls }}
+        ARGS: ${{ inputs.args }}
+        JUNIT: ${{ inputs.junit }}
+        FAIL: ${{ inputs.fail }}
+      run: |
+        set -uo pipefail
+        report="$RUNNER_TEMP/go-checker.json"
+        set --
+        if [ -n "$FILE" ]; then set -- -f "$FILE"; fi
+        if [ -n "$JUNIT" ]; then set -- "$@" --junit "$JUNIT"; fi
+        # URLs and extra args are split on whitespace on purpose.
+        # shellcheck disable=SC2086
+        go-checker check "$@" $URLS $ARGS --format json --output "$report"
+        code=$?
+        {
+          echo "exit-code=$code"
+          echo "report=$report"
+          if [ -s "$report" ]; then
+            echo "up=$(jq .summary.up "$report")"
+            echo "warn=$(jq .summary.warn "$report")"
+            echo "down=$(jq .summary.down "$report")"
+          fi
+        } >> "$GITHUB_OUTPUT"
+        if [ "$FAIL" = "true" ] || [ "$code" -eq 2 ]; then exit "$code"; fi
