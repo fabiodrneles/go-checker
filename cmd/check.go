@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -61,7 +60,6 @@ current directory.`,
 			return verdict(results, f.failOnWarn)
 		},
 	}
-	c.SetContext(context.Background())
 	fl := c.Flags()
 	fl.StringVarP(&f.file, "file", "f", "", "check file (default: go-checker.yaml, checks.yaml or config.yaml)")
 	fl.DurationVar(&f.timeout, "timeout", config.DefaultTimeout, "timeout per attempt, overrides the file")
