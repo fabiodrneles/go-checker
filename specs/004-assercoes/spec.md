@@ -1,7 +1,7 @@
 # 004 — Asserções
 
 - **Prioridade:** P1
-- **Status:** In Progress
+- **Status:** Done — entregue na `v1.0.0`
 - **Código afetado:** `internal/assert`, `internal/config`, `internal/runner`
 
 ## Contexto

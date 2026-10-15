@@ -1,7 +1,7 @@
 # 005 — Saídas para CI e GitHub Action
 
 - **Prioridade:** P1
-- **Status:** In Progress
+- **Status:** Done — entregue na `v1.0.0`
 - **Código afetado:** `internal/report`, `cmd/`, `action.yml`
 
 ## Requisitos funcionais

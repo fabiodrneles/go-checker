@@ -1,7 +1,7 @@
 # 001 — Projeto, CI e release
 
 - **Prioridade:** P0
-- **Status:** In Progress
+- **Status:** Done — entregue na `v1.0.0`
 - **Código afetado:** `main.go`, `.goreleaser.yml`, `.github/workflows/`
 - **Resolve:** A1, A3, M1
 
