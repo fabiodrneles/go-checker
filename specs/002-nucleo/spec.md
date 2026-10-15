@@ -1,7 +1,7 @@
 # 002 — Núcleo: medir, decidir e sair com o código certo
 
 - **Prioridade:** P0
-- **Status:** In Progress
+- **Status:** Done — entregue na `v1.0.0`
 - **Código afetado:** `cmd/`, `internal/config`, `internal/probe`, `internal/runner`, `internal/report`
 - **Resolve:** C1, C2, A2, M3, B1, B2
 

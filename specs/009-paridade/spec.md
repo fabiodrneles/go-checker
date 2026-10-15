@@ -1,7 +1,7 @@
 # 009 — Acima da média: segredos, autenticação, TCP e DNS
 
 - **Prioridade:** P1
-- **Status:** In Progress
+- **Status:** Done — entregue na `v1.0.0`
 - **Código afetado:** `internal/config`, `internal/probe`
 - **Origem:** pesquisa de mercado de 2026-10-15 (Gatus, Uptime Kuma, Blackbox Exporter, Hurl, StepCI, Checkly, k6)
 

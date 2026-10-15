@@ -1,7 +1,7 @@
 # 003 — Raio-x da requisição e validade do certificado
 
 - **Prioridade:** P1
-- **Status:** In Progress
+- **Status:** Done — entregue na `v1.0.0`
 - **Código afetado:** `internal/probe`, `internal/runner`, `internal/report`
 
 ## Contexto
