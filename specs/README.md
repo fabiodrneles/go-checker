@@ -37,6 +37,6 @@ Convenções: `MUST`/`SHOULD`/`MAY` seguem a RFC 2119. Prioridades: **P0** (bloq
 | 007 | [Modo monitor, métricas e alertas](007-monitor/spec.md) | P2 | In Progress |
 | 008 | [Documentação e v1.0.0](008-documentacao/spec.md) | P1 | Approved |
 | 009 | [Acima da média: segredos, autenticação, TCP e DNS](009-paridade/spec.md) | P1 | In Progress |
-| 010 | [Acima da média: mais canais de alerta e imagem Docker](010-alertas-docker/spec.md) | P1 | Approved |
+| 010 | [Acima da média: mais canais de alerta e imagem Docker](010-alertas-docker/spec.md) | P1 | In Progress |
 
 Status possíveis: `Draft` → `Approved` → `In Progress` → `Done`.

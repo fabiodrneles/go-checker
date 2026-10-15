@@ -372,3 +372,9 @@ func TestCheckTCPFromCLI(t *testing.T) {
 		t.Fatalf("code %d\n%s", code, out)
 	}
 }
+
+func TestWatchBadTelegram(t *testing.T) {
+	if code, _, errOut := run(t, "watch", "https://example.com", "--telegram", "nocolon"); code != ExitUsage || !strings.Contains(errOut, "BOT_TOKEN:CHAT_ID") {
+		t.Fatalf("code %d %s", code, errOut)
+	}
+}

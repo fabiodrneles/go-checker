@@ -1,7 +1,7 @@
 # 010 — Acima da média: mais canais de alerta e imagem Docker
 
 - **Prioridade:** P1
-- **Status:** Approved
+- **Status:** In Progress
 - **Código afetado:** `internal/notify`, `cmd/watch.go`, `.goreleaser.yml`, `Dockerfile`
 - **Origem:** pesquisa de mercado de 2026-10-15
 

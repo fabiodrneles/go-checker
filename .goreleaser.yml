@@ -49,6 +49,26 @@ archives:
       - examples/*
 
 # -------------------------------
+# Imagem Docker (spec 010 FR-2)
+# -------------------------------
+dockers_v2:
+  - images:
+      - ghcr.io/fabiodrneles/go-checker
+    tags:
+      - "v{{ .Version }}"
+      - "{{ if not .Prerelease }}latest{{ end }}"
+    platforms:
+      - linux/amd64
+      - linux/arm64
+    labels:
+      org.opencontainers.image.title: go-checker
+      org.opencontainers.image.description: Health checks for websites and APIs, from your terminal or your CI
+      org.opencontainers.image.source: https://github.com/fabiodrneles/go-checker
+      org.opencontainers.image.version: "v{{ .Version }}"
+      org.opencontainers.image.revision: "{{ .FullCommit }}"
+      org.opencontainers.image.licenses: MIT
+
+# -------------------------------
 # Checksums
 # -------------------------------
 checksum:
