@@ -57,7 +57,7 @@ git fetch -q --tags origin main
 
 # Próxima versão pelo go-release-manager, analisando a origin/main (sem tocar na
 # árvore de trabalho: worktree descartável).
-GRM_VERSION="${GRM_VERSION:-v1.2.0}"
+GRM_VERSION="${GRM_VERSION:-v1.1.0}"
 grm_next() {
   wt="$(mktemp -d)"
   git worktree add -q --detach "$wt" origin/main 2> /dev/null || { rm -rf "$wt"; return 1; }
